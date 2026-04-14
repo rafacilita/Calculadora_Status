@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Relatório Mensal — CRR5</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#121a24; --card2:#0f1722;
+      --text:#eaf2ff; --muted:#9fb0c3; --border:#213041;
+      --good:#39d98a; --warn:#ffcc00; --bad:#ff5c5c; --link:#7db6ff;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
+    a{color:var(--link);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{max-width:1050px;margin:0 auto;padding:16px}
+    .top{
+      display:flex; gap:12px; align-items:flex-start; justify-content:space-between;
+      flex-wrap:wrap; padding:14px; border:1px solid var(--border); border-radius:14px; background:var(--card);
+    }
+    .title{display:flex;flex-direction:column;gap:6px}
+    .title h1{margin:0;font-size:18px}
+    .title .sub{color:var(--muted);font-size:12px}
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    input,button,select{
+      background:var(--card2);color:var(--text);
+      border:1px solid var(--border);border-radius:12px;padding:10px 12px;
+      font-weight:700;
+    }
+    button{cursor:pointer}
+    button:hover{filter:brightness(1.08)}
+    .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--border);font-size:12px;color:var(--muted)}
+    .pill.good{color:var(--good);border-color:rgba(57,217,138,.35)}
+    .pill.bad{color:var(--bad);border-color:rgba(255,92,92,.35)}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
+    @media(min-width:950px){.grid{grid-template-columns:1fr 1fr}}
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px;
+    }
+    .card h2{margin:0 0 10px 0;font-size:16px}
+    .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    @media(max-width:520px){.kpis{grid-template-columns:repeat(2,1fr)}}
+    .kpi{
+      background:var(--card2); border:1px solid var(--border); border-radius:12px; padding:10px;
+      min-height:72px; display:flex; flex-direction:column; justify-content:space-between;
+    }
+    .kpi .v{font-size:18px;font-weight:900;letter-spacing:.2px}
+    .kpi .l{color:var(--muted);font-size:12px}
+    .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .small{font-size:12px;color:var(--muted)}
+    .errbox{
+      margin-top:12px; padding:10px 12px; border-radius:12px;
+      border:1px solid rgba(255,92,92,.35); background:rgba(255,92,92,.08); color:#ffd0d0;
+      display:none; white-space:pre-wrap;
+    }
+    textarea{
+      width:100%; min-height:140px; resize:vertical;
+      background:var(--card2); color:var(--text);
+      border:1px solid var(--border); border-radius:12px; padding:10px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      font-size:12px;
+    }
+    .btnline{display:flex;gap:10px;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="title">
+        <h1>Relatório Mensal — CRR5</h1>
+        <div class="sub">
+          Mês: <span class="mono" id="monthLabel">—</span> • Fonte: <span class="mono">/metrics</span> • Worker: <span class="mono" id="scriptName">—</span>
+        </div>
+        <div class="sub">
+          Dica: use <span class="mono">?month=YYYY-MM</span> (ex.: <span class="mono">?month=2026-03</span>)
+        </div>
+      </div>
+
+      <div class="controls">
+        <span class="pill" id="statusPill">carregando…</span>
+
+        <label class="small">Mês (YYYY-MM)</label>
+        <input id="month" class="mono" placeholder="2026-03" />
+
+        <button id="btn">Gerar</button>
+        <button id="btnCsv">Exportar CSV</button>
+        <button id="btnCopy">Copiar resumo</button>
+
+        <a class="pill" id="jsonLink" href="/metrics" target="_blank" rel="noopener">Ver JSON</a>
+      </div>
+    </div>
+
+    <div class="errbox" id="errbox"></div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Upstash (Redis)</h2>
+        <div class="kpis">
+          <div class="kpi"><div class="v" id="u_total">—</div><div class="l">Commands (mês)</div></div>
+          <div class="kpi"><div class="v" id="u_reads">—</div><div class="l">Reads (mês)</div></div>
+          <div class="kpi"><div class="v" id="u_writes">—</div><div class="l">Writes (mês)</div></div>
+
+          <div class="kpi"><div class="v" id="u_avg_day">—</div><div class="l">Commands/dia (média)</div></div>
+          <div class="kpi"><div class="v" id="u_storage">—</div><div class="l">Storage atual</div></div>
+          <div class="kpi"><div class="v" id="u_cost">—</div><div class="l">Custo do mês</div></div>
+        </div>
+        <div class="row">
+          <div class="small">Última leitura: <span class="mono" id="u_at">—</span></div>
+          <div class="small">Status: <span class="mono" id="u_ok">—</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Cloudflare (Worker)</h2>
+        <div class="kpis">
+          <div class="kpi"><div class="v" id="c_req">—</div><div class="l">Requests (período)</div></div>
+          <div class="kpi"><div class="v" id="c_sub">—</div><div class="l">Subrequests (período)</div></div>
+          <div class="kpi"><div class="v" id="c_err">—</div><div class="l">Errors (período)</div></div>
+
+          <div class="kpi"><div class="v" id="c_p50">—</div><div class="l">CPU P50</div></div>
+          <div class="kpi"><div class="v" id="c_p90">—</div><div class="l">CPU P90</div></div>
+          <div class="kpi"><div class="v" id="c_p99">—</div><div class="l">CPU P99</div></div>
+        </div>
+        <div class="row">
+          <div class="small">Última leitura: <span class="mono" id="c_at">—</span></div>
+          <div class="small">Status: <span class="mono" id="c_ok">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2>Resumo pronto pra colar (PPT / e-mail)</h2>
+      <div class="btnline" style="margin-bottom:10px">
+        <span class="small">Esse texto é gerado automaticamente com base no mês selecionado.</span>
+      </div>
+      <textarea id="summary" readonly></textarea>
+    </div>
+  </div>
+
+<script>
+  const $ = (id)=>document.getElementById(id);
+
+  function fmtInt(n){
+    if(n===null||n===undefined) return "—";
+    return new Intl.NumberFormat("pt-BR").format(n);
+  }
+  function fmtMoneyUSD(n){
+    if(n===null||n===undefined) return "—";
+    return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);
+  }
+  function fmtBytes(b){
+    if(b===null||b===undefined) return "—";
+    const units=["B","KB","MB","GB","TB"];
+    let i=0, v=Number(b);
+    while(v>=1024 && i<units.length-1){v/=1024;i++;}
+    return `${v.toFixed(i===0?0:2)} ${units[i]}`;
+  }
+  function fmtCpu(us){
+    if(us===null||us===undefined) return "—";
+    const ms = us/1000;
+    return `${ms.toFixed(2)} ms`;
+  }
+  function setPill(ok, text){
+    const pill = $("statusPill");
+    pill.classList.remove("good","bad");
+    if(ok===true){ pill.classList.add("good"); pill.textContent = text || "ok"; }
+    else if(ok===false){ pill.classList.add("bad"); pill.textContent = text || "erro"; }
+    else { pill.textContent = text || "…"; }
+  }
+
+  function getCurrentYM(){
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    return `${y}-${m}`;
+  }
+
+  function daysInMonth(ym){
+    const m = /^(\d{4})-(\d{2})$/.exec(ym||"");
+    if(!m) return null;
+    const y = Number(m[1]);
+    const mo = Number(m[2]); // 1..12
+    if(mo<1||mo>12) return null;
+    return new Date(y, mo, 0).getDate();
+  }
+
+  function buildSummary(ym, data){
+    const u = data.upstash || {};
+    const c = data.cloudflare || {};
+    const dcount = daysInMonth(ym) || 30;
+
+    const total = (u.total_monthly_requests ?? null);
+    const avg = (typeof total === "number") ? Math.round(total / dcount) : null;
+
+    const lines = [
+      `RELATÓRIO CRR5 — ${ym}`,
+      ``,
+      `Upstash (Redis)`,
+      `• Commands no mês: ${fmtInt(u.total_monthly_requests)}`,
+      `• Reads no mês: ${fmtInt(u.monthly_reads)}`,
+      `• Writes no mês: ${fmtInt(u.monthly_writes)}`,
+      `• Média de commands/dia: ${avg===null ? "—" : fmtInt(avg)}`,
+      `• Storage atual: ${fmtBytes(u.current_storage_bytes)}`,
+      `• Custo do mês: ${fmtMoneyUSD(u.monthly_billing_usd)}`,
+      ``,
+      `Cloudflare (Worker) — período consultado`,
+      `• Requests: ${fmtInt(c.requests)}`,
+      `• Subrequests: ${fmtInt(c.subrequests)}`,
+      `• Errors: ${fmtInt(c.errors)}`,
+      `• CPU P50/P90/P99: ${fmtCpu(c.cpu_p50_us)} / ${fmtCpu(c.cpu_p90_us)} / ${fmtCpu(c.cpu_p99_us)}`,
+      ``,
+      `Observação`,
+      `• Os números acima vêm do endpoint /metrics filtrado por mês.`,
+      `• Recomenda-se manter o relatório em modo manual (sem auto-refresh) para economizar chamadas.`,
+    ];
+    return lines.join("\n");
+  }
+
+  let lastData = null;
+
+  async function load(){
+    const ym = ($("month").value || "").trim();
+    const month = ym || getCurrentYM();
+
+    $("errbox").style.display = "none";
+    setPill(null, "carregando…");
+
+    $("monthLabel").textContent = month;
+    $("jsonLink").href = `/metrics?month=${encodeURIComponent(month)}`;
+
+    try{
+      const r = await fetch(`/metrics?month=${encodeURIComponent(month)}&ts=${Date.now()}`, { cache:"no-store" });
+      const data = await r.json();
+
+      if(!data.ok){
+        setPill(false, "falhou");
+        $("errbox").style.display = "block";
+        $("errbox").textContent = data.error || "Erro desconhecido";
+        return;
+      }
+
+      lastData = data;
+      $("scriptName").textContent = data.period?.scriptName || "—";
+
+      // Upstash
+      const u = data.upstash || {};
+      $("u_total").textContent = fmtInt(u.total_monthly_requests);
+      $("u_reads").textContent = fmtInt(u.monthly_reads);
+      $("u_writes").textContent = fmtInt(u.monthly_writes);
+
+      const dcount = daysInMonth(month) || 30;
+      const avg = (typeof u.total_monthly_requests === "number")
+        ? Math.round(u.total_monthly_requests / dcount)
+        : null;
+      $("u_avg_day").textContent = avg===null ? "—" : fmtInt(avg);
+
+      $("u_storage").textContent = fmtBytes(u.current_storage_bytes);
+      $("u_cost").textContent = (u.monthly_billing_usd===null||u.monthly_billing_usd===undefined) ? "—" : fmtMoneyUSD(u.monthly_billing_usd);
+      $("u_ok").textContent = u.ok ? "ok" : "erro";
+      $("u_at").textContent = data.at ? new Date(data.at).toLocaleString("pt-BR") : "—";
+
+      // Cloudflare
+      const c = data.cloudflare || {};
+      $("c_req").textContent = fmtInt(c.requests);
+      $("c_sub").textContent = fmtInt(c.subrequests);
+      $("c_err").textContent = fmtInt(c.errors);
+      $("c_p50").textContent = fmtCpu(c.cpu_p50_us);
+      $("c_p90").textContent = fmtCpu(c.cpu_p90_us);
+      $("c_p99").textContent = fmtCpu(c.cpu_p99_us);
+      $("c_ok").textContent = c.ok ? "ok" : "erro";
+      $("c_at").textContent = data.at ? new Date(data.at).toLocaleString("pt-BR") : "—";
+
+      // Pill geral
+      const bothOk = !!u.ok && !!c.ok;
+      setPill(bothOk, bothOk ? "saudável" : "atenção");
+
+      // summary
+      $("summary").value = buildSummary(month, data);
+    }catch(e){
+      setPill(false, "erro");
+      $("errbox").style.display = "block";
+      $("errbox").textContent = String(e?.message || e);
+    }
+  }
+
+  function exportCsv(){
+    if(!lastData){
+      alert("Gere o relatório primeiro.");
+      return;
+    }
+    const ym = ($("month").value || "").trim() || getCurrentYM();
+    const u = lastData.upstash || {};
+    const c = lastData.cloudflare || {};
+    const rows = [
+      ["month", ym],
+      ["generated_at", lastData.at || ""],
+      ["worker_script", lastData.period?.scriptName || ""],
+      ["upstash_total_monthly_requests", u.total_monthly_requests ?? ""],
+      ["upstash_monthly_reads", u.monthly_reads ?? ""],
+      ["upstash_monthly_writes", u.monthly_writes ?? ""],
+      ["upstash_daily_net_commands", u.daily_net_commands ?? ""],
+      ["upstash_current_storage_bytes", u.current_storage_bytes ?? ""],
+      ["upstash_monthly_billing_usd", u.monthly_billing_usd ?? ""],
+      ["cloudflare_requests", c.requests ?? ""],
+      ["cloudflare_subrequests", c.subrequests ?? ""],
+      ["cloudflare_errors", c.errors ?? ""],
+      ["cloudflare_cpu_p50_us", c.cpu_p50_us ?? ""],
+      ["cloudflare_cpu_p90_us", c.cpu_p90_us ?? ""],
+      ["cloudflare_cpu_p99_us", c.cpu_p99_us ?? ""],
+    ];
+
+    const csv = rows.map(r => r.map(x => `"${String(x).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `relatorio_crr5_${ym}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  async function copySummary(){
+    const t = $("summary").value || "";
+    if(!t){ alert("Nada para copiar."); return; }
+    await navigator.clipboard.writeText(t);
+    alert("Resumo copiado ✅");
+  }
+
+  $("btn").addEventListener("click", load);
+  $("btnCsv").addEventListener("click", exportCsv);
+  $("btnCopy").addEventListener("click", copySummary);
+
+  // inicial
+  const qpMonth = new URLSearchParams(location.search).get("month");
+  $("month").value = qpMonth || getCurrentYM();
+  load();
+</script>
+</body>
+</html>
