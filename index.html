@@ -178,7 +178,8 @@
       $("u_writes").textContent = fmtInt(u.monthly_writes);
       $("u_daily").textContent = fmtInt(u.daily_net_commands);
       $("u_storage").textContent = fmtBytes(u.current_storage_bytes);
-      $("u_cost").textContent = (u.monthly_billing_usd===null||u.monthly_billing_usd===undefined) ? "—" : fmtMoneyUSD(u.monthly_billing_usd);
+      $("u_cost").textContent =
+        (u.monthly_billing_usd===null||u.monthly_billing_usd===undefined) ? "—" : fmtMoneyUSD(u.monthly_billing_usd);
       $("u_ok").textContent = u.ok ? "ok" : "erro";
       $("u_at").textContent = data.at ? new Date(data.at).toLocaleString("pt-BR") : "—";
 
@@ -193,7 +194,7 @@
       $("c_ok").textContent = c.ok ? "ok" : "erro";
       $("c_at").textContent = data.at ? new Date(data.at).toLocaleString("pt-BR") : "—";
 
-      // Pill geral: se ambos ok
+      // Pill geral
       const bothOk = !!u.ok && !!c.ok;
       setPill(bothOk, bothOk ? "saudável" : "atenção");
     }catch(e){
@@ -206,8 +207,13 @@
   $("btn").addEventListener("click", load);
   $("hours").addEventListener("change", load);
 
+  // economia: carrega 1x ao abrir
   load();
-  setInterval(load, 30000); // 30s (economiza comandos)
+
+  // economia: ao voltar pra aba, atualiza 1x (sem loop)
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") load();
+  });
 </script>
 </body>
 </html>
