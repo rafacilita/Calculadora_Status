@@ -1,1 +1,213 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Status CRR5 — Monitor</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --card:#121a24; --card2:#0f1722;
+      --text:#eaf2ff; --muted:#9fb0c3; --border:#213041;
+      --good:#39d98a; --warn:#ffcc00; --bad:#ff5c5c; --link:#7db6ff;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
+    a{color:var(--link);text-decoration:none}
+    a:hover{text-decoration:underline}
+    .wrap{max-width:980px;margin:0 auto;padding:16px}
+    .top{
+      display:flex; gap:12px; align-items:center; justify-content:space-between;
+      flex-wrap:wrap; padding:14px; border:1px solid var(--border); border-radius:14px; background:var(--card);
+    }
+    .title{display:flex;flex-direction:column;gap:4px}
+    .title h1{margin:0;font-size:18px}
+    .title .sub{color:var(--muted);font-size:12px}
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    select,button{
+      background:var(--card2);color:var(--text);
+      border:1px solid var(--border);border-radius:12px;padding:10px 12px;
+      font-weight:600;
+    }
+    button{cursor:pointer}
+    button:hover{filter:brightness(1.08)}
+    .pill{padding:6px 10px;border-radius:999px;border:1px solid var(--border);font-size:12px;color:var(--muted)}
+    .pill.good{color:var(--good);border-color:rgba(57,217,138,.35)}
+    .pill.bad{color:var(--bad);border-color:rgba(255,92,92,.35)}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
+    @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px;
+    }
+    .card h2{margin:0 0 10px 0;font-size:16px}
+    .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    @media(max-width:520px){.kpis{grid-template-columns:repeat(2,1fr)}}
+    .kpi{
+      background:var(--card2); border:1px solid var(--border); border-radius:12px; padding:10px;
+      min-height:72px; display:flex; flex-direction:column; justify-content:space-between;
+    }
+    .kpi .v{font-size:18px;font-weight:900;letter-spacing:.2px}
+    .kpi .l{color:var(--muted);font-size:12px}
+    .row{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:10px}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .small{font-size:12px;color:var(--muted)}
+    .errbox{
+      margin-top:12px; padding:10px 12px; border-radius:12px;
+      border:1px solid rgba(255,92,92,.35); background:rgba(255,92,92,.08); color:#ffd0d0;
+      display:none;
+      white-space:pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="title">
+        <h1>Status CRR5 — Monitor</h1>
+        <div class="sub">
+          Fonte: <span class="mono">/metrics</span> • Worker: <span class="mono" id="scriptName">—</span>
+        </div>
+      </div>
 
+      <div class="controls">
+        <span class="pill" id="statusPill">carregando…</span>
+
+        <label class="small">Período:
+          <select id="hours">
+            <option value="1">1h</option>
+            <option value="6">6h</option>
+            <option value="24" selected>24h</option>
+            <option value="168">7 dias</option>
+          </select>
+        </label>
+
+        <button id="btn">Atualizar</button>
+        <a class="pill" href="/metrics" target="_blank" rel="noopener">Ver JSON</a>
+      </div>
+    </div>
+
+    <div class="errbox" id="errbox"></div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Upstash (Redis)</h2>
+        <div class="kpis">
+          <div class="kpi"><div class="v" id="u_total">—</div><div class="l">Commands (mês)</div></div>
+          <div class="kpi"><div class="v" id="u_reads">—</div><div class="l">Reads (mês)</div></div>
+          <div class="kpi"><div class="v" id="u_writes">—</div><div class="l">Writes (mês)</div></div>
+          <div class="kpi"><div class="v" id="u_daily">—</div><div class="l">Net commands (dia)</div></div>
+          <div class="kpi"><div class="v" id="u_storage">—</div><div class="l">Storage atual</div></div>
+          <div class="kpi"><div class="v" id="u_cost">—</div><div class="l">Custo do mês</div></div>
+        </div>
+        <div class="row">
+          <div class="small">Última leitura: <span class="mono" id="u_at">—</span></div>
+          <div class="small">Status: <span class="mono" id="u_ok">—</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Cloudflare (Worker)</h2>
+        <div class="kpis">
+          <div class="kpi"><div class="v" id="c_req">—</div><div class="l">Requests</div></div>
+          <div class="kpi"><div class="v" id="c_sub">—</div><div class="l">Subrequests</div></div>
+          <div class="kpi"><div class="v" id="c_err">—</div><div class="l">Errors</div></div>
+          <div class="kpi"><div class="v" id="c_p50">—</div><div class="l">CPU P50</div></div>
+          <div class="kpi"><div class="v" id="c_p90">—</div><div class="l">CPU P90</div></div>
+          <div class="kpi"><div class="v" id="c_p99">—</div><div class="l">CPU P99</div></div>
+        </div>
+        <div class="row">
+          <div class="small">Última leitura: <span class="mono" id="c_at">—</span></div>
+          <div class="small">Status: <span class="mono" id="c_ok">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const $ = (id)=>document.getElementById(id);
+
+  function fmtInt(n){
+    if(n===null||n===undefined) return "—";
+    return new Intl.NumberFormat("pt-BR").format(n);
+  }
+  function fmtMoneyUSD(n){
+    if(n===null||n===undefined) return "—";
+    return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);
+  }
+  function fmtBytes(b){
+    if(b===null||b===undefined) return "—";
+    const units=["B","KB","MB","GB","TB"];
+    let i=0, v=Number(b);
+    while(v>=1024 && i<units.length-1){v/=1024;i++;}
+    return `${v.toFixed(i===0?0:2)} ${units[i]}`;
+  }
+  function fmtCpu(us){
+    if(us===null||us===undefined) return "—";
+    const ms = us/1000;
+    return `${ms.toFixed(2)} ms`;
+  }
+  function setPill(ok, text){
+    const pill = $("statusPill");
+    pill.classList.remove("good","bad");
+    if(ok===true){ pill.classList.add("good"); pill.textContent = text || "ok"; }
+    else if(ok===false){ pill.classList.add("bad"); pill.textContent = text || "erro"; }
+    else { pill.textContent = text || "…"; }
+  }
+
+  async function load(){
+    const hours = $("hours").value;
+    $("errbox").style.display = "none";
+    setPill(null, "carregando…");
+
+    try{
+      const r = await fetch(`/metrics?hours=${encodeURIComponent(hours)}&ts=${Date.now()}`, { cache:"no-store" });
+      const data = await r.json();
+
+      if(!data.ok){
+        setPill(false, "falhou");
+        $("errbox").style.display = "block";
+        $("errbox").textContent = data.error || "Erro desconhecido";
+        return;
+      }
+
+      $("scriptName").textContent = data.period?.scriptName || "—";
+
+      // Upstash
+      const u = data.upstash || {};
+      $("u_total").textContent = fmtInt(u.total_monthly_requests);
+      $("u_reads").textContent = fmtInt(u.monthly_reads);
+      $("u_writes").textContent = fmtInt(u.monthly_writes);
+      $("u_daily").textContent = fmtInt(u.daily_net_commands);
+      $("u_storage").textContent = fmtBytes(u.current_storage_bytes);
+      $("u_cost").textContent = (u.monthly_billing_usd===null||u.monthly_billing_usd===undefined) ? "—" : fmtMoneyUSD(u.monthly_billing_usd);
+      $("u_ok").textContent = u.ok ? "ok" : "erro";
+      $("u_at").textContent = data.at ? new Date(data.at).toLocaleString("pt-BR") : "—";
+
+      // Cloudflare
+      const c = data.cloudflare || {};
+      $("c_req").textContent = fmtInt(c.requests);
+      $("c_sub").textContent = fmtInt(c.subrequests);
+      $("c_err").textContent = fmtInt(c.errors);
+      $("c_p50").textContent = fmtCpu(c.cpu_p50_us);
+      $("c_p90").textContent = fmtCpu(c.cpu_p90_us);
+      $("c_p99").textContent = fmtCpu(c.cpu_p99_us);
+      $("c_ok").textContent = c.ok ? "ok" : "erro";
+      $("c_at").textContent = data.at ? new Date(data.at).toLocaleString("pt-BR") : "—";
+
+      // Pill geral: se ambos ok
+      const bothOk = !!u.ok && !!c.ok;
+      setPill(bothOk, bothOk ? "saudável" : "atenção");
+    }catch(e){
+      setPill(false, "erro");
+      $("errbox").style.display = "block";
+      $("errbox").textContent = String(e?.message || e);
+    }
+  }
+
+  $("btn").addEventListener("click", load);
+  $("hours").addEventListener("change", load);
+
+  load();
+  setInterval(load, 30000); // 30s (economiza comandos)
+</script>
+</body>
+</html>
