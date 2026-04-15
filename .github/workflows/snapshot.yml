@@ -1,47 +1,45 @@
-name: Snapshot diário CRR5
+name: Snapshot diário CRR5 (D-1) + Fechamento Mensal
 
 on:
+  workflow_dispatch:
   schedule:
-    # 05:10 UTC = 02:10 BRT (UTC-3). Pode ajustar depois.
-    - cron: "10 5 * * *"
-  workflow_dispatch: {}
+    # 00:10 BRT (UTC-3) => 03:10 UTC
+    - cron: "10 3 * * *"
 
 permissions:
   contents: write
-
-concurrency:
-  group: snapshot-diario
-  cancel-in-progress: false
 
 jobs:
   snapshot:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-    
+      METRICS_URL: ${{ secrets.METRICS_URL }}
+
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
-      - name: Rodar snapshot (1x)
-        env:
-          METRICS_URL: ${{ secrets.METRICS_URL }}
-        run: |
-          node scripts/snapshot.js
+      - name: Run snapshot (D-1) + monthly close (day 1)
+        run: node scripts/snapshot.js
 
-      - name: Commit e push (se tiver mudança)
+      - name: Commit & push (if changed)
         run: |
-          if git status --porcelain | grep .; then
-            git config user.name "crr5-snapshot-bot"
-            git config user.email "crr5-snapshot-bot@users.noreply.github.com"
-            git add data/*.json
-            git commit -m "chore(snapshot): daily metrics snapshot"
+          git config user.name "crr5-snapshot-bot"
+          git config user.email "crr5-snapshot-bot@users.noreply.github.com"
+
+          if [ -n "$(git status --porcelain)" ]; then
+            git add data/*.json month/*.json || true
+            git commit -m "chore(snapshot): daily snapshot + monthly close"
             git push
           else
-            echo "Sem mudanças para commitar."
+            echo "No changes to commit."
           fi
