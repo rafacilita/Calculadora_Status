@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Status CRR5 — Relatório por Snapshots</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#0f1b2f;
+      --panel2:#0c1628;
+      --text:#e7eefc;
+      --muted:#9db0d0;
+      --ok:#2dd4bf;
+      --warn:#fbbf24;
+      --bad:#fb7185;
+      --line:#203553;
+      --chip:#152744;
+      --shadow: 0 12px 30px rgba(0,0,0,.35);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
+      background: radial-gradient(1200px 700px at 20% 0%, rgba(45,212,191,.10), transparent 45%),
+                  radial-gradient(1100px 700px at 90% 30%, rgba(99,102,241,.10), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+    header{
+      padding:22px 18px 0 18px;
+      max-width:1200px;
+      margin:0 auto;
+    }
+    .title{
+      display:flex; align-items:flex-end; justify-content:space-between; gap:12px;
+      padding:18px 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.06);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .title h1{margin:0; font-size:22px; letter-spacing:.2px}
+    .title .sub{margin-top:6px; color:var(--muted); font-size:13px}
+    .badge{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 12px; border-radius:999px;
+      background: rgba(45,212,191,.12);
+      border:1px solid rgba(45,212,191,.25);
+      color: var(--ok);
+      font-weight:600;
+      white-space:nowrap;
+    }
+    .badge.bad{background: rgba(251,113,133,.12); border-color: rgba(251,113,133,.25); color: var(--bad)}
+    .badge.warn{background: rgba(251,191,36,.12); border-color: rgba(251,191,36,.25); color: var(--warn)}
+    main{
+      padding:16px 18px 32px 18px;
+      max-width:1200px;
+      margin:0 auto;
+    }
+    .controls{
+      display:flex; flex-wrap:wrap; gap:10px;
+      align-items:center;
+      padding:14px 14px;
+      background: rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius: var(--radius);
+    }
+    label{font-size:12px; color:var(--muted)}
+    .ctrl{
+      display:flex; flex-direction:column; gap:6px;
+      min-width: 180px;
+    }
+    input, select{
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 12px;
+      padding:10px 12px;
+      outline:none;
+    }
+    input:focus, select:focus{border-color: rgba(45,212,191,.45); box-shadow: 0 0 0 3px rgba(45,212,191,.10);}
+    button{
+      background: linear-gradient(180deg, rgba(45,212,191,.22), rgba(45,212,191,.10));
+      border:1px solid rgba(45,212,191,.30);
+      color: var(--text);
+      padding:11px 14px;
+      border-radius: 14px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    button.secondary{
+      background: rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.10);
+      font-weight:600;
+    }
+    button:disabled{opacity:.5; cursor:not-allowed}
+    .grid{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+    }
+    .cards{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0,1fr));
+      gap:12px;
+    }
+    @media (max-width: 980px){
+      .cards{grid-template-columns: repeat(2, minmax(0,1fr));}
+      .ctrl{min-width: 150px;}
+    }
+    @media (max-width: 520px){
+      .cards{grid-template-columns: 1fr;}
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.06);
+      border-radius: var(--radius);
+      padding:14px 14px;
+      box-shadow: var(--shadow);
+      position:relative;
+      overflow:hidden;
+    }
+    .card h3{margin:0 0 8px 0; font-size:14px; color:var(--muted); font-weight:650}
+    .big{font-size:26px; font-weight:900; letter-spacing:.2px}
+    .small{font-size:12px; color:var(--muted)}
+    .split{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:14px;
+    }
+    @media (max-width: 980px){ .split{grid-template-columns:1fr;} }
+    .panel{
+      background: rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius: var(--radius);
+      padding:14px;
+      box-shadow: var(--shadow);
+    }
+    .panel h2{margin:0 0 10px 0; font-size:16px}
+    .panel .hint{color:var(--muted); font-size:12px; margin:0 0 10px 0}
+    .row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:6px 0}
+    .chip{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:7px 10px;
+      background: var(--chip);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .table-wrap{overflow:auto; border-radius: var(--radius); border:1px solid rgba(255,255,255,.06)}
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width: 980px;
+      background: rgba(0,0,0,.12);
+    }
+    th, td{
+      padding:10px 10px;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      font-size:12px;
+      text-align:right;
+      white-space:nowrap;
+    }
+    th{
+      position:sticky; top:0;
+      background: rgba(12,22,40,.95);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing:.08em;
+      font-size:11px;
+    }
+    td:first-child, th:first-child{ text-align:left; }
+    tr:hover td{ background: rgba(255,255,255,.03); }
+    .muted{color:var(--muted)}
+    .ok{color:var(--ok)}
+    .warn{color:var(--warn)}
+    .bad{color:var(--bad)}
+    .canvas-wrap{
+      background: rgba(0,0,0,.12);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius: var(--radius);
+      padding:12px;
+      overflow:hidden;
+    }
+    canvas{width:100%; height:260px;}
+    .foot{
+      margin-top:10px;
+      color:var(--muted);
+      font-size:12px;
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    /* Print */
+    @media print{
+      body{background:#fff; color:#000}
+      header, main{max-width:100%; padding:0}
+      .title,.controls,.panel,.card,.canvas-wrap{box-shadow:none}
+      .title,.controls,.panel,.card,.canvas-wrap{border:1px solid #ddd; background:#fff}
+      .muted{color:#444}
+      .chip{border:1px solid #ddd; background:#fff}
+      th{background:#f5f5f5}
+      a{color:#000}
+      button{display:none}
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="title">
+    <div>
+      <h1>Status CRR5 — Relatório por Snapshots</h1>
+      <div class="sub">Este relatório usa <b>arquivos diários</b> em <code>/data/YYYY-MM-DD.json</code>. Não consulta o Worker <code>/save</code> nem <code>/load</code>.</div>
+    </div>
+    <div id="healthBadge" class="badge warn">pronto para carregar</div>
+  </div>
+</header>
+
+<main>
+  <div class="controls">
+    <div class="ctrl">
+      <label for="mode">Modo</label>
+      <select id="mode">
+        <option value="month" selected>Mês (recomendado)</option>
+        <option value="range">Período (datas)</option>
+        <option value="week">Semana (a partir de uma data)</option>
+      </select>
+    </div>
+
+    <div class="ctrl" id="monthCtrl">
+      <label for="month">Mês</label>
+      <input id="month" type="month" />
+    </div>
+
+    <div class="ctrl" id="startCtrl" style="display:none">
+      <label for="start">De</label>
+      <input id="start" type="date" />
+    </div>
+
+    <div class="ctrl" id="endCtrl" style="display:none">
+      <label for="end">Até</label>
+      <input id="end" type="date" />
+    </div>
+
+    <div class="ctrl" id="weekCtrl" style="display:none">
+      <label for="weekStart">Início da semana</label>
+      <input id="weekStart" type="date" />
+    </div>
+
+    <div class="ctrl">
+      <label for="basePath">Caminho base dos snapshots</label>
+      <input id="basePath" type="text" value="./data" />
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:flex-end; margin-left:auto;">
+      <button id="btnLoad">Carregar</button>
+      <button id="btnCSV" class="secondary" disabled>Baixar CSV</button>
+      <button id="btnPrint" class="secondary" disabled>Imprimir/PDF</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="cards">
+      <div class="card">
+        <h3>CRR5 criados (Writes)</h3>
+        <div id="kpiWrites" class="big">—</div>
+        <div id="kpiWritesSub" class="small">—</div>
+      </div>
+      <div class="card">
+        <h3>CRR5 carregados (Reads)</h3>
+        <div id="kpiReads" class="big">—</div>
+        <div id="kpiReadsSub" class="small">—</div>
+      </div>
+      <div class="card">
+        <h3>Comandos totais (Redis)</h3>
+        <div id="kpiCmds" class="big">—</div>
+        <div id="kpiCmdsSub" class="small">—</div>
+      </div>
+      <div class="card">
+        <h3>Saúde do Worker (CF)</h3>
+        <div id="kpiErrors" class="big">—</div>
+        <div id="kpiErrorsSub" class="small">—</div>
+      </div>
+    </div>
+
+    <div class="split">
+      <div class="panel">
+        <h2>Resumo do período</h2>
+        <p class="hint">Criação/leitura usa “diferença” entre contadores mensais do Upstash (reads/writes). Se faltar dia, usa o último snapshot anterior disponível.</p>
+        <div class="row"><span class="muted">Período analisado</span><span id="sumPeriod" class="chip">—</span></div>
+        <div class="row"><span class="muted">Dias com snapshot</span><span id="sumCoverage" class="chip">—</span></div>
+        <div class="row"><span class="muted">Reuso (Reads/Writes)</span><span id="sumReuse" class="chip">—</span></div>
+        <div class="row"><span class="muted">Storage (último dia)</span><span id="sumStorage" class="chip">—</span></div>
+        <div class="row"><span class="muted">Custo (último dia)</span><span id="sumCost" class="chip">—</span></div>
+        <div class="row"><span class="muted">Última coleta</span><span id="sumLast" class="chip">—</span></div>
+      </div>
+
+      <div class="panel">
+        <h2>Gráficos (por dia)</h2>
+        <p class="hint">Writes = “CRR5 gerados”. Reads = “CRR5 carregados”. CPU P99 é o “pior” nível de latência (quase sempre).</p>
+        <div class="canvas-wrap">
+          <canvas id="chart"></canvas>
+        </div>
+        <div class="foot">
+          <span class="muted">Dica: para apresentação, clique em <b>Imprimir/PDF</b>.</span>
+          <span id="chartLegend" class="muted">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Detalhamento diário</h2>
+      <p class="hint">Arquivos lidos de <code>/data</code>. Se um dia não existir, aparece como “sem snapshot”.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Writes (dia)</th>
+              <th>Reads (dia)</th>
+              <th>Commands (dia)</th>
+              <th>Storage (MB)</th>
+              <th>CF Requests (24h)</th>
+              <th>CF Subrequests (24h)</th>
+              <th>CF Errors (24h)</th>
+              <th>CPU P50 (ms)</th>
+              <th>CPU P90 (ms)</th>
+              <th>CPU P99 (ms)</th>
+              <th>Status snapshot</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="foot">
+        <span class="muted">Export CSV: abre no Excel e monta seu relatório.</span>
+        <span class="muted">Fonte: snapshots locais (sem custo no Redis do CRR5).</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const fmtInt = (n) => (n === null || n === undefined || Number.isNaN(n)) ? "—" : new Intl.NumberFormat("pt-BR").format(Math.round(n));
+  const fmtFloat = (n, d=2) => (n === null || n === undefined || Number.isNaN(n)) ? "—" : new Intl.NumberFormat("pt-BR",{minimumFractionDigits:d, maximumFractionDigits:d}).format(n);
+  const fmtMoney = (n) => (n === null || n === undefined || Number.isNaN(n)) ? "—" : new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);
+  const bytesToMB = (b) => (b === null || b === undefined || Number.isNaN(b)) ? null : (b / (1024*1024));
+  const usToMs = (us) => (us === null || us === undefined || Number.isNaN(us)) ? null : (us/1000);
+  const pad2 = (x) => String(x).padStart(2,"0");
+
+  function ymdUTC(date){
+    return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth()+1)}-${pad2(date.getUTCDate())}`;
+  }
+  function parseYMD(s){
+    const [y,m,d] = s.split("-").map(Number);
+    return new Date(Date.UTC(y, m-1, d));
+  }
+  function addDays(dateUTC, days){
+    const d = new Date(dateUTC.getTime());
+    d.setUTCDate(d.getUTCDate() + days);
+    return d;
+  }
+  function daysInMonthUTC(y, m1to12){
+    return new Date(Date.UTC(y, m1to12, 0)).getUTCDate();
+  }
+  function setBadge(state, text){
+    const el = $("healthBadge");
+    el.className = "badge";
+    if (state === "warn") el.classList.add("warn");
+    if (state === "bad") el.classList.add("bad");
+    el.textContent = text;
+  }
+
+  async function fetchJson(url){
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return { ok:false, status: res.status };
+    try{
+      const j = await res.json();
+      return { ok:true, json:j };
+    }catch(e){
+      return { ok:false, status: "bad_json" };
+    }
+  }
+  async function mapLimit(items, limit, mapper){
+    const out = new Array(items.length);
+    let i = 0;
+    const workers = new Array(Math.min(limit, items.length)).fill(0).map(async () => {
+      while (i < items.length){
+        const idx = i++;
+        out[idx] = await mapper(items[idx], idx);
+      }
+    });
+    await Promise.all(workers);
+    return out;
+  }
+
+  function syncMode(){
+    const mode = $("mode").value;
+    $("monthCtrl").style.display = (mode === "month") ? "" : "none";
+    $("startCtrl").style.display = (mode === "range") ? "" : "none";
+    $("endCtrl").style.display   = (mode === "range") ? "" : "none";
+    $("weekCtrl").style.display  = (mode === "week") ? "" : "none";
+  }
+  $("mode").addEventListener("change", syncMode);
+  syncMode();
+
+  const now = new Date();
+  $("month").value = `${now.getUTCFullYear()}-${pad2(now.getUTCMonth()+1)}`;
+
+  function extract(snapshot){
+    const raw = snapshot?.data || {};
+    const up = raw?.upstash || {};
+    const cf = raw?.cloudflare || {};
+    return {
+      fetched_at: snapshot?.fetched_at_utc || raw?.at || null,
+      up_total_monthly_requests: up?.total_monthly_requests ?? null,
+      up_monthly_reads: up?.monthly_reads ?? null,
+      up_monthly_writes: up?.monthly_writes ?? null,
+      up_daily_net_commands: up?.daily_net_commands ?? null,
+      up_storage_bytes: up?.current_storage_bytes ?? null,
+      up_billing_usd: up?.monthly_billing_usd ?? null,
+      cf_requests: cf?.requests ?? null,
+      cf_subrequests: cf?.subrequests ?? null,
+      cf_errors: cf?.errors ?? null,
+      cf_cpu_p50_us: cf?.cpu_p50_us ?? null,
+      cf_cpu_p90_us: cf?.cpu_p90_us ?? null,
+      cf_cpu_p99_us: cf?.cpu_p99_us ?? null,
+    };
+  }
+
+  function computeDeltas(rows){
+    let last = null;
+    for (const r of rows){
+      if (!r.present){
+        r.d_reads = null; r.d_writes = null; r.d_cmds = null;
+        continue;
+      }
+      const curReads = r.x.up_monthly_reads;
+      const curWrites = r.x.up_monthly_writes;
+      const curCmds = r.x.up_total_monthly_requests;
+
+      if (!last){
+        r.d_reads = curReads ?? null;
+        r.d_writes = curWrites ?? null;
+        r.d_cmds = curCmds ?? null;
+      } else {
+        const dr = (curReads ?? null) - (last.x.up_monthly_reads ?? 0);
+        const dw = (curWrites ?? null) - (last.x.up_monthly_writes ?? 0);
+        const dc = (curCmds ?? null) - (last.x.up_total_monthly_requests ?? 0);
+        r.d_reads = (dr !== null && dr >= 0) ? dr : (curReads ?? null);
+        r.d_writes = (dw !== null && dw >= 0) ? dw : (curWrites ?? null);
+        r.d_cmds = (dc !== null && dc >= 0) ? dc : (curCmds ?? null);
+      }
+      last = r;
+    }
+    return rows;
+  }
+
+  function buildCSV(rows){
+    const header = [
+      "date","writes_day","reads_day","commands_day","storage_mb",
+      "cf_requests_24h","cf_subrequests_24h","cf_errors_24h",
+      "cpu_p50_ms","cpu_p90_ms","cpu_p99_ms","snapshot_present"
+    ];
+    const lines = [header.join(",")];
+    for (const r of rows){
+      const storageMB = bytesToMB(r.x?.up_storage_bytes ?? null);
+      const cpu50 = usToMs(r.x?.cf_cpu_p50_us ?? null);
+      const cpu90 = usToMs(r.x?.cf_cpu_p90_us ?? null);
+      const cpu99 = usToMs(r.x?.cf_cpu_p99_us ?? null);
+
+      lines.push([
+        r.ymd,
+        r.d_writes ?? "",
+        r.d_reads ?? "",
+        r.d_cmds ?? "",
+        (storageMB===null?"":storageMB.toFixed(4)),
+        r.x?.cf_requests ?? "",
+        r.x?.cf_subrequests ?? "",
+        r.x?.cf_errors ?? "",
+        (cpu50===null?"":cpu50.toFixed(3)),
+        (cpu90===null?"":cpu90.toFixed(3)),
+        (cpu99===null?"":cpu99.toFixed(3)),
+        r.present ? "1" : "0",
+      ].join(","));
+    }
+    return lines.join("\n");
+  }
+  function download(filename, content, mime="text/plain"){
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+
+  function renderTable(rows){
+    const tb = $("tbody");
+    tb.innerHTML = "";
+    for (const r of rows){
+      const storageMB = bytesToMB(r.x?.up_storage_bytes ?? null);
+      const cpu50 = usToMs(r.x?.cf_cpu_p50_us ?? null);
+      const cpu90 = usToMs(r.x?.cf_cpu_p90_us ?? null);
+      const cpu99 = usToMs(r.x?.cf_cpu_p99_us ?? null);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${r.ymd}</td>
+        <td>${fmtInt(r.d_writes)}</td>
+        <td>${fmtInt(r.d_reads)}</td>
+        <td>${fmtInt(r.d_cmds)}</td>
+        <td>${storageMB===null ? "—" : fmtFloat(storageMB,2)}</td>
+        <td>${fmtInt(r.x?.cf_requests ?? null)}</td>
+        <td>${fmtInt(r.x?.cf_subrequests ?? null)}</td>
+        <td>${fmtInt(r.x?.cf_errors ?? null)}</td>
+        <td>${cpu50===null ? "—" : fmtFloat(cpu50,2)}</td>
+        <td>${cpu90===null ? "—" : fmtFloat(cpu90,2)}</td>
+        <td>${cpu99===null ? "—" : fmtFloat(cpu99,2)}</td>
+        <td class="${r.present ? "ok" : "muted"}">${r.present ? "ok" : "sem snapshot"}</td>
+      `;
+      tb.appendChild(tr);
+    }
+  }
+
+  function renderKPIs(rows, periodLabel){
+    const present = rows.filter(r=>r.present);
+    const totalWrites = present.reduce((a,r)=>a + (r.d_writes||0), 0);
+    const totalReads = present.reduce((a,r)=>a + (r.d_reads||0), 0);
+    const totalCmds = present.reduce((a,r)=>a + (r.d_cmds||0), 0);
+    const totalErrors = present.reduce((a,r)=>a + (r.x?.cf_errors||0), 0);
+
+    const last = present[present.length-1] || null;
+    const lastStorageMB = bytesToMB(last?.x?.up_storage_bytes ?? null);
+    const lastCost = last?.x?.up_billing_usd ?? null;
+
+    const avgP99 = present.length ? present.reduce((a,r)=>a + (usToMs(r.x?.cf_cpu_p99_us||0)||0), 0) / present.length : null;
+
+    $("kpiWrites").textContent = fmtInt(totalWrites);
+    $("kpiReads").textContent = fmtInt(totalReads);
+    $("kpiCmds").textContent = fmtInt(totalCmds);
+    $("kpiErrors").textContent = fmtInt(totalErrors);
+
+    $("kpiWritesSub").textContent = present.length ? `${fmtInt(totalWrites/present.length)} / dia (média)` : "—";
+    $("kpiReadsSub").textContent  = present.length ? `${fmtInt(totalReads/present.length)} / dia (média)` : "—";
+    $("kpiCmdsSub").textContent   = present.length ? `${fmtInt(totalCmds/present.length)} / dia (média)` : "—";
+    $("kpiErrorsSub").textContent = avgP99===null ? "—" : `CPU P99 médio: ${fmtFloat(avgP99,2)} ms`;
+
+    $("sumPeriod").textContent = periodLabel;
+    $("sumCoverage").textContent = `${present.length}/${rows.length} dias (${fmtInt((present.length/rows.length)*100)}%)`;
+    $("sumReuse").textContent = totalWrites > 0 ? `${fmtFloat(totalReads/totalWrites,2)}x` : "—";
+    $("sumStorage").textContent = lastStorageMB===null ? "—" : `${fmtFloat(lastStorageMB,2)} MB`;
+    $("sumCost").textContent = lastCost===null ? "—" : fmtMoney(lastCost);
+    $("sumLast").textContent = last?.x?.fetched_at ? new Date(last.x.fetched_at).toLocaleString("pt-BR") : "—";
+
+    if (!present.length) setBadge("bad","sem dados");
+    else if (totalErrors>0) setBadge("warn","atenção");
+    else setBadge("warn","ok (sem erros)");
+  }
+
+  function drawChart(rows){
+    const canvas = $("chart");
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.clientWidth;
+    const cssH = canvas.clientHeight;
+    canvas.width = Math.floor(cssW * dpr);
+    canvas.height = Math.floor(cssH * dpr);
+    ctx.scale(dpr,dpr);
+
+    ctx.clearRect(0,0,cssW,cssH);
+
+    const present = rows.filter(r=>r.present);
+    if (!present.length){
+      $("chartLegend").textContent = "Sem dados para o gráfico.";
+      return;
+    }
+
+    const labels = present.map(r=>r.ymd.slice(8));
+    const writes = present.map(r=>r.d_writes ?? 0);
+    const reads = present.map(r=>r.d_reads ?? 0);
+    const p99 = present.map(r=>usToMs(r.x?.cf_cpu_p99_us ?? null)).map(v=>v ?? 0);
+
+    const padL=44, padR=44, padT=14, padB=26;
+    const plotW=cssW-padL-padR, plotH=cssH-padT-padB;
+
+    const maxLeft = Math.max(1, ...writes, ...reads);
+    const maxRight = Math.max(1, ...p99);
+    const n = present.length;
+
+    const x = (i)=> padL + (n===1? plotW/2 : i*(plotW/(n-1)));
+    const yL = (v)=> padT + (plotH - (v/maxLeft)*plotH);
+    const yR = (v)=> padT + (plotH - (v/maxRight)*plotH);
+
+    // grid
+    ctx.strokeStyle = "rgba(255,255,255,.08)";
+    ctx.lineWidth = 1;
+    for (let k=0;k<=4;k++){
+      const yy = padT + k*(plotH/4);
+      ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(padL+plotW, yy); ctx.stroke();
+    }
+
+    // lines
+    function line(data, color, right=false){
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i=0;i<n;i++){
+        const xx = x(i);
+        const yy = right ? yR(data[i]) : yL(data[i]);
+        if (i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
+      }
+      ctx.stroke();
+    }
+    line(writes,"rgba(45,212,191,.95)");
+    line(reads,"rgba(99,102,241,.95)");
+    line(p99,"rgba(251,191,36,.95)", true);
+
+    // x labels
+    ctx.fillStyle = "rgba(255,255,255,.55)";
+    ctx.font = "11px ui-sans-serif, system-ui";
+    const step = Math.ceil(n/10);
+    for(let i=0;i<n;i+=step){
+      const xx = x(i);
+      ctx.fillText(labels[i], xx-6, padT+plotH+18);
+    }
+
+    $("chartLegend").textContent = `Dias exibidos: ${present.length} • Esquerda: Reads/Writes • Direita: CPU P99`;
+  }
+
+  async function loadRange(startUTC, endUTC){
+    const basePath = $("basePath").value.replace(/\/+$/,"");
+    const days = [];
+    let cur = new Date(startUTC.getTime());
+    while (cur <= endUTC){
+      days.push(ymdUTC(cur));
+      cur = addDays(cur, 1);
+    }
+
+    $("btnLoad").disabled = true;
+    $("btnLoad").textContent = "Carregando…";
+    setBadge("warn","carregando…");
+
+    const results = await mapLimit(days, 6, async (ymd) => {
+      const url = `${basePath}/${ymd}.json`;
+      const r = await fetchJson(url);
+      if (!r.ok) return { ymd, present:false, x:null };
+      return { ymd, present:true, x: extract(r.json) };
+    });
+
+    const rows = results.map(r=>({
+      ymd:r.ymd,
+      date: parseYMD(r.ymd),
+      present:r.present,
+      x:r.present ? r.x : null,
+      d_reads:null, d_writes:null, d_cmds:null
+    })).sort((a,b)=>a.date-b.date);
+
+    computeDeltas(rows);
+
+    renderKPIs(rows, `${rows[0].ymd} → ${rows[rows.length-1].ymd}`);
+    renderTable(rows);
+    drawChart(rows);
+
+    const csv = buildCSV(rows);
+    $("btnCSV").disabled = false;
+    $("btnPrint").disabled = false;
+    $("btnCSV").onclick = ()=> download(`relatorio_crr5_${rows[0].ymd}_a_${rows[rows.length-1].ymd}.csv`, csv, "text/csv");
+    $("btnPrint").onclick = ()=> window.print();
+
+    $("btnLoad").disabled = false;
+    $("btnLoad").textContent = "Carregar";
+  }
+
+  $("btnLoad").addEventListener("click", async ()=>{
+    const mode = $("mode").value;
+    if (mode==="month"){
+      const val = $("month").value;
+      if (!val) return;
+      const [y,m] = val.split("-").map(Number);
+      const n = daysInMonthUTC(y,m);
+      await loadRange(new Date(Date.UTC(y,m-1,1)), new Date(Date.UTC(y,m-1,n)));
+      return;
+    }
+    if (mode==="week"){
+      const w = $("weekStart").value;
+      if (!w) return;
+      const start = parseYMD(w);
+      await loadRange(start, addDays(start,6));
+      return;
+    }
+    if (mode==="range"){
+      const s = $("start").value, e = $("end").value;
+      if (!s || !e) return;
+      await loadRange(parseYMD(s), parseYMD(e));
+    }
+  });
+</script>
+</body>
+</html>
