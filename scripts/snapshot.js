@@ -1,70 +1,45 @@
-// scripts/snapshot.js
-// Snapshot diário do /metrics (modo economia): 1 GET, salva em /data/YYYY-MM-DD.json
+name: Snapshot diário CRR5
 
-import fs from "node:fs";
-import path from "node:path";
+on:
+  workflow_dispatch:
+  schedule:
+    # 00:01 BRT (UTC-3) = 03:01 UTC
+    - cron: "1 3 * * *"
 
-function ymdUTC(date = new Date()) {
-  // usa UTC para consistência no cron
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
+permissions:
+  contents: write
 
-async function main() {
-  const baseUrl = process.env.METRICS_URL;
-  if (!baseUrl) {
-    console.error("Falta METRICS_URL (ex: https://calculadora-status.pages.dev/metrics)");
-    process.exit(1);
-  }
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      METRICS_URL: ${{ secrets.METRICS_URL }}
 
-  const dateStr = process.env.SNAPSHOT_DATE || ymdUTC();
-  const outDir = path.join(process.cwd(), "data");
-  const outFile = path.join(outDir, `${dateStr}.json`);
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
 
-  if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
 
-  // Evita regravar o mesmo dia (zero ruído)
-  if (fs.existsSync(outFile)) {
-    console.log(`Snapshot já existe: ${outFile} (skip)`);
-    return;
-  }
+      - name: Run snapshot script
+        run: node scripts/snapshot.js
 
-  const url = new URL(baseUrl);
-  // puxa 24h como padrão, e sem detail (leve)
-  if (!url.searchParams.has("hours")) url.searchParams.set("hours", "24");
-  // cache buster
-  url.searchParams.set("ts", String(Date.now()));
+      - name: Commit & push (if changed)
+        run: |
+          git config user.name "crr5-snapshot-bot"
+          git config user.email "crr5-snapshot-bot@users.noreply.github.com"
 
-  console.log("Buscando:", url.toString());
-
-  const res = await fetch(url.toString(), {
-    method: "GET",
-    headers: { "Accept": "application/json" }
-  });
-
-  const text = await res.text();
-  let json;
-  try { json = JSON.parse(text); } catch { json = null; }
-
-  if (!res.ok || !json || json.ok !== true) {
-    console.error("Falha ao obter métricas:", res.status, text.slice(0, 1000));
-    process.exit(2);
-  }
-
-  const payload = {
-    snapshot_date_utc: dateStr,
-    fetched_at_utc: new Date().toISOString(),
-    source: baseUrl,
-    data: json
-  };
-
-  fs.writeFileSync(outFile, JSON.stringify(payload, null, 2), "utf-8");
-  console.log("Salvo:", outFile);
-}
-
-main().catch((e) => {
-  console.error("Erro:", e);
-  process.exit(3);
-});
+          if [ -n "$(git status --porcelain)" ]; then
+            git add data/*.json || true
+            git commit -m "chore(snapshot): daily metrics snapshot"
+            git push
+          else
+            echo "No changes to commit."
+          fi
