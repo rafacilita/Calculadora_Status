@@ -2,24 +2,48 @@ name: Snapshot diário CRR5 (D-1) + Fechamento Mensal
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "daily | month_close"
+        required: false
+        default: "daily"
+      target_date:
+        description: "YYYY-MM-DD (opcional, só pra testar/reprocessar um dia)"
+        required: false
+        default: ""
+      force:
+        description: "1 = sobrescreve mesmo se já existir"
+        required: false
+        default: "0"
+
   schedule:
-    # Diário (D-1) — 00:10 BRT (UTC-3) => 03:10 UTC
+    # 00:10 BRT (UTC-3) => 03:10 UTC
     - cron: "10 3 * * *"
 
-    # Candidato a fechamento mensal — 23:58 BRT (UTC-3) => 02:58 UTC
-    # (só roda nos dias 28-31; o script confirma se é último dia mesmo)
-    - cron: "58 2 28-31 * *"
+    # 23:55 UTC nos dias 28-31 (script confirma se é último dia do mês)
+    - cron: "55 23 28-31 * *"
 
 permissions:
   contents: write
 
+concurrency:
+  group: snapshot-crr5
+  cancel-in-progress: false
+
 jobs:
-  snapshot:
+  daily:
+    if: >
+      (github.event_name == 'schedule' && github.event.schedule == '10 3 * * *')
+      || (github.event_name == 'workflow_dispatch' && (github.event.inputs.mode == '' || github.event.inputs.mode == 'daily'))
+
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       TZ: America/Sao_Paulo
       METRICS_URL: ${{ secrets.METRICS_URL }}
+      MODE: daily
+      TARGET_DATE: ${{ github.event.inputs.target_date }}
+      FORCE: ${{ github.event.inputs.force }}
 
     steps:
       - name: Checkout repo
@@ -33,34 +57,68 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Definir modo conforme o cron
-        run: |
-          MODE="daily"
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            if [ "${{ github.event.schedule }}" = "10 3 * * *" ]; then
-              MODE="daily"
-            elif [ "${{ github.event.schedule }}" = "58 2 28-31 * *" ]; then
-              MODE="month-close"
-            fi
-          fi
-          echo "RUN_MODE=$MODE" >> $GITHUB_ENV
-          echo "Modo selecionado: $MODE"
-
-      - name: Run snapshot
+      - name: Run snapshot (daily D-1)
         run: node scripts/snapshot.js
 
-      - name: Commit & push (se mudou)
+      - name: Commit & push (if changed)
         run: |
           git config user.name "crr5-snapshot-bot"
           git config user.email "crr5-snapshot-bot@users.noreply.github.com"
 
-          # evita falha se tiver commit novo no remoto
           git pull --rebase origin main || true
 
-          if [ -n "$(git status --porcelain)" ]; then
-            git add data month || true
-            git commit -m "chore(snapshot): daily snapshot + monthly close"
-            git push
-          else
+          git add -A data month
+
+          if git diff --cached --quiet; then
             echo "No changes to commit."
+            exit 0
           fi
+
+          git commit -m "chore(snapshot): daily snapshot + monthly close"
+          git push
+
+  month_close:
+    if: >
+      (github.event_name == 'schedule' && github.event.schedule == '55 23 28-31 * *')
+      || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'month_close')
+
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      TZ: America/Sao_Paulo
+      METRICS_URL: ${{ secrets.METRICS_URL }}
+      MODE: month_close
+      TARGET_DATE: ${{ github.event.inputs.target_date }}
+      FORCE: ${{ github.event.inputs.force }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run snapshot (month close, only if last day UTC)
+        run: node scripts/snapshot.js
+
+      - name: Commit & push (if changed)
+        run: |
+          git config user.name "crr5-snapshot-bot"
+          git config user.email "crr5-snapshot-bot@users.noreply.github.com"
+
+          git pull --rebase origin main || true
+
+          git add -A data month
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore(snapshot): daily snapshot + monthly close"
+          git push
