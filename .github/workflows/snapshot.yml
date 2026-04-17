@@ -3,12 +3,12 @@ name: Snapshot diário CRR5 (D-1) + Fechamento Mensal
 on:
   workflow_dispatch:
   schedule:
-    # 00:10 BRT (UTC-3) => 03:10 UTC  (snapshot D-1)
+    # Diário (D-1) — 00:10 BRT (UTC-3) => 03:10 UTC
     - cron: "10 3 * * *"
-    # Guard 1: 20:40 BRT => 23:40 UTC  (ajuda se reset mensal for “UTC”)
-    - cron: "40 23 * * *"
-    # Guard 2: 23:40 BRT => 02:40 UTC  (ajuda se reset mensal for “BRT”)
-    - cron: "40 2 * * *"
+
+    # Candidato a fechamento mensal — 23:58 BRT (UTC-3) => 02:58 UTC
+    # (só roda nos dias 28-31; o script confirma se é último dia mesmo)
+    - cron: "58 2 28-31 * *"
 
 permissions:
   contents: write
@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-      METRICS_URL: ${{ secrets.METRICS_URL }}
       TZ: America/Sao_Paulo
+      METRICS_URL: ${{ secrets.METRICS_URL }}
 
     steps:
       - name: Checkout repo
@@ -33,22 +33,23 @@ jobs:
         with:
           node-version: "22"
 
-      # Define o modo conforme o cron que disparou
-      - name: Set SNAP_MODE
+      - name: Definir modo conforme o cron
         run: |
-          echo "EVENT=${{ github.event_name }}" >> $GITHUB_ENV
-          echo "SCHEDULE=${{ github.event.schedule }}" >> $GITHUB_ENV
-
-          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "10 3 * * *" ]; then
-            echo "SNAP_MODE=d1" >> $GITHUB_ENV
-          else
-            echo "SNAP_MODE=month_guard" >> $GITHUB_ENV
+          MODE="daily"
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            if [ "${{ github.event.schedule }}" = "10 3 * * *" ]; then
+              MODE="daily"
+            elif [ "${{ github.event.schedule }}" = "58 2 28-31 * *" ]; then
+              MODE="month-close"
+            fi
           fi
+          echo "RUN_MODE=$MODE" >> $GITHUB_ENV
+          echo "Modo selecionado: $MODE"
 
       - name: Run snapshot
         run: node scripts/snapshot.js
 
-      - name: Commit & push (if changed)
+      - name: Commit & push (se mudou)
         run: |
           git config user.name "crr5-snapshot-bot"
           git config user.email "crr5-snapshot-bot@users.noreply.github.com"
@@ -57,10 +58,7 @@ jobs:
           git pull --rebase origin main || true
 
           if [ -n "$(git status --porcelain)" ]; then
-            # IMPORTANTÍSSIMO: separar os adds (senão month/*.json quebra e data não entra!)
-            git add data/*.json || true
-            git add month/*.json || true
-
+            git add data month || true
             git commit -m "chore(snapshot): daily snapshot + monthly close"
             git push
           else
