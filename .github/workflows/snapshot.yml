@@ -3,23 +3,23 @@ name: Snapshot diário CRR5 (D-1) + Fechamento Mensal
 on:
   workflow_dispatch:
   schedule:
-    # 00:10 BRT (UTC-3) => 03:10 UTC
+    # 00:10 BRT (UTC-3) => 03:10 UTC  (snapshot D-1)
     - cron: "10 3 * * *"
+    # Guard 1: 20:40 BRT => 23:40 UTC  (ajuda se reset mensal for “UTC”)
+    - cron: "40 23 * * *"
+    # Guard 2: 23:40 BRT => 02:40 UTC  (ajuda se reset mensal for “BRT”)
+    - cron: "40 2 * * *"
 
 permissions:
   contents: write
-
-concurrency:
-  group: crr5-snapshot
-  cancel-in-progress: false
 
 jobs:
   snapshot:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-      TZ: America/Sao_Paulo
       METRICS_URL: ${{ secrets.METRICS_URL }}
+      TZ: America/Sao_Paulo
 
     steps:
       - name: Checkout repo
@@ -33,26 +33,36 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Run snapshot (D-1) + monthly close (day 1)
+      # Define o modo conforme o cron que disparou
+      - name: Set SNAP_MODE
+        run: |
+          echo "EVENT=${{ github.event_name }}" >> $GITHUB_ENV
+          echo "SCHEDULE=${{ github.event.schedule }}" >> $GITHUB_ENV
+
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "10 3 * * *" ]; then
+            echo "SNAP_MODE=d1" >> $GITHUB_ENV
+          else
+            echo "SNAP_MODE=month_guard" >> $GITHUB_ENV
+          fi
+
+      - name: Run snapshot
         run: node scripts/snapshot.js
 
       - name: Commit & push (if changed)
-        shell: bash
         run: |
-          set -e
-
           git config user.name "crr5-snapshot-bot"
           git config user.email "crr5-snapshot-bot@users.noreply.github.com"
 
           # evita falha se tiver commit novo no remoto
           git pull --rebase origin main || true
 
-          # ✅ FIX: não usa glob, adiciona por pasta
-          git add -A data month || true
-
           if [ -n "$(git status --porcelain)" ]; then
+            # IMPORTANTÍSSIMO: separar os adds (senão month/*.json quebra e data não entra!)
+            git add data/*.json || true
+            git add month/*.json || true
+
             git commit -m "chore(snapshot): daily snapshot + monthly close"
-            git push origin HEAD:main
+            git push
           else
             echo "No changes to commit."
           fi
