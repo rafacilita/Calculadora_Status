@@ -1,219 +1,223 @@
-import fs from "fs/promises";
-import path from "path";
+/**
+ * Snapshot CRR5 metrics (Upstash + Cloudflare) via Pages Function /metrics
+ *
+ * MODES:
+ * - daily: grava data/YYYY-MM-DD.json para o "D-1" em America/Sao_Paulo
+ * - month_close: só executa no ÚLTIMO DIA DO MÊS (UTC). Grava month/YYYY-MM.json
+ *
+ * ENV:
+ * - METRICS_URL (obrigatório)
+ * - MODE = daily | month_close
+ * - TZ = America/Sao_Paulo (default)
+ * - TARGET_DATE = YYYY-MM-DD (opcional, pra reprocessar manual)
+ * - FORCE = "1" (sobrescreve mesmo se já existir)
+ */
 
-const TZ = process.env.TZ || "America/Sao_Paulo";
-const RUN_MODE = (process.env.RUN_MODE || "daily").toLowerCase();
-const METRICS_URL = process.env.METRICS_URL;
+import fs from "node:fs";
+import path from "node:path";
+
+const METRICS_URL = (process.env.METRICS_URL || "").trim();
+const MODE = (process.env.MODE || "daily").trim();
+const TZ = (process.env.TZ || "America/Sao_Paulo").trim();
+const TARGET_DATE = (process.env.TARGET_DATE || "").trim();
+const FORCE = (process.env.FORCE || "0").trim() === "1";
 
 if (!METRICS_URL) {
-  throw new Error("Falta METRICS_URL (configure em GitHub Secrets).");
+  console.error("ERRO: METRICS_URL não definido.");
+  process.exit(1);
 }
 
 function ymdInTZ(date, tz) {
-  // en-CA costuma retornar YYYY-MM-DD
-  const s = new Intl.DateTimeFormat("en-CA", {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(date);
-  return s; // YYYY-MM-DD
+  });
+  return fmt.format(date); // YYYY-MM-DD
 }
 
-function parseYMD(ymd) {
-  const [y, m, d] = ymd.split("-").map((n) => parseInt(n, 10));
-  return { y, m, d };
+function addQuery(urlStr, params) {
+  const u = new URL(urlStr);
+  for (const [k, v] of Object.entries(params)) {
+    u.searchParams.set(k, String(v));
+  }
+  return u.toString();
 }
 
-// cria um Date em UTC no meio do dia (12:00) pra evitar treta de virada/DST
-function dateFromYMDNoonUTC(ymd) {
-  const { y, m, d } = parseYMD(ymd);
-  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+function isLastDayOfMonthUTC(d) {
+  const tomorrow = new Date(d.getTime());
+  tomorrow.setUTCDate(d.getUTCDate() + 1);
+  return tomorrow.getUTCMonth() !== d.getUTCMonth();
 }
 
-function addDaysYMD(ymd, deltaDays, tz) {
-  const base = dateFromYMDNoonUTC(ymd);
-  const next = new Date(base.getTime() + deltaDays * 86400000);
-  return ymdInTZ(next, tz);
+function monthKeyUTC(d) {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
 }
 
-async function ensureDir(dir) {
-  await fs.mkdir(dir, { recursive: true });
+async function sleep(ms) {
+  await new Promise((r) => setTimeout(r, ms));
 }
 
-async function readJsonIfExists(filePath) {
+async function fetchJsonWithRetry(url, tries = 3) {
+  let lastErr = null;
+  for (let i = 1; i <= tries; i++) {
+    try {
+      const res = await fetch(url, {
+        headers: { Accept: "application/json" },
+      });
+      const txt = await res.text();
+      let json = null;
+      try {
+        json = JSON.parse(txt);
+      } catch {
+        throw new Error(`Resposta não-JSON (HTTP ${res.status}): ${txt.slice(0, 200)}`);
+      }
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
+      }
+      return json;
+    } catch (e) {
+      lastErr = e;
+      console.warn(`Tentativa ${i}/${tries} falhou: ${e?.message || e}`);
+      if (i < tries) await sleep(800 * i);
+    }
+  }
+  throw lastErr || new Error("Falha desconhecida ao buscar JSON");
+}
+
+function isValidMetrics(metricsJson) {
+  // Esperado (exemplo):
+  // { ok: true, upstash: { ok:true, monthly_reads:..., monthly_writes:... }, cloudflare:{ ok:true, requests:... } }
+  if (!metricsJson || metricsJson.ok !== true) return false;
+  if (!metricsJson.cloudflare || metricsJson.cloudflare.ok !== true) return false;
+
+  // Upstash precisa estar OK pra snapshot ser útil (senão vira "—" no relatório)
+  if (!metricsJson.upstash || metricsJson.upstash.ok !== true) return false;
+  if (metricsJson.upstash.monthly_reads == null) return false;
+  if (metricsJson.upstash.monthly_writes == null) return false;
+
+  return true;
+}
+
+function loadIfExists(filePath) {
+  if (!fs.existsSync(filePath)) return null;
   try {
-    const txt = await fs.readFile(filePath, "utf-8");
-    return JSON.parse(txt);
-  } catch (e) {
+    return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+  } catch {
     return null;
   }
 }
 
-function isGoodSnapshot(obj) {
-  // formato esperado: { data: { ok, upstash:{ok}, cloudflare:{ok} } }
-  const d = obj?.data;
-  return d?.ok === true && d?.upstash?.ok === true && d?.cloudflare?.ok === true;
-}
+async function main() {
+  const now = new Date();
 
-async function fetchMetrics24h() {
-  const u = new URL(METRICS_URL);
-
-  // garante 24h SEMPRE (isso evita Upstash=null)
-  u.searchParams.set("hours", "24");
-
-  // cache-buster
-  u.searchParams.set("ts", String(Date.now()));
-
-  const res = await fetch(u.toString(), {
-    method: "GET",
-    headers: {
-      "accept": "application/json",
-      "user-agent": "crr5-snapshot-bot",
-    },
-  });
-
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(`METRICS_URL HTTP ${res.status}: ${text.slice(0, 300)}`);
-  }
-
-  let json;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    throw new Error(`Resposta do /metrics não é JSON: ${text.slice(0, 300)}`);
-  }
-
-  if (json?.ok !== true) {
-    throw new Error(`/metrics retornou ok=false: ${text.slice(0, 300)}`);
-  }
-
-  return { url: u.toString(), data: json };
-}
-
-async function writeJsonAtomic(filePath, obj) {
-  const dir = path.dirname(filePath);
-  await ensureDir(dir);
-
-  const tmp = `${filePath}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(obj, null, 2), "utf-8");
-  await fs.rename(tmp, filePath);
-}
-
-function isLastDayOfMonth(ymd, tz) {
-  const tomorrow = addDaysYMD(ymd, 1, tz);
-  const { d } = parseYMD(tomorrow);
-  return d === 1;
-}
-
-async function runDaily() {
-  // Hoje em BRT
-  const today = ymdInTZ(new Date(), TZ);
-  // D-1 em BRT
-  const target = addDaysYMD(today, -1, TZ);
-
-  const outPath = path.join("data", `${target}.json`);
-  const existing = await readJsonIfExists(outPath);
-
-  // Se já está bom, não mexe
-  if (existing && isGoodSnapshot(existing)) {
-    console.log(`[daily] Já existe snapshot bom: ${outPath} — pulando.`);
+  // month_close: só roda no último dia do mês (UTC)
+  if (MODE === "month_close" && !isLastDayOfMonthUTC(now)) {
+    console.log("month_close: hoje NÃO é o último dia do mês (UTC). Nada a fazer.");
     return;
   }
 
-  const { url, data } = await fetchMetrics24h();
+  let targetDate = TARGET_DATE;
 
-  const snapshot = {
-    snapshot_date_local: target,
-    captured_at_utc: new Date().toISOString(),
-    tz: TZ,
-    mode: "daily(D-1)",
-    source: url,
-    data,
-  };
-
-  // Se Upstash vier ruim, falha (melhor falhar do que gravar lixo)
-  if (!isGoodSnapshot(snapshot)) {
-    console.error("[daily] Snapshot inválido (Upstash/Cloudflare não ok).");
-    console.error(JSON.stringify(snapshot, null, 2));
-    throw new Error("Snapshot inválido: upstash ok=false ou cloudflare ok=false");
-  }
-
-  await writeJsonAtomic(outPath, snapshot);
-  console.log(`[daily] Gravado: ${outPath}`);
-
-  // Fechamento mensal automático (opcional):
-  // se o TARGET (D-1) foi o último dia do mês, cria month/YYYY-MM.json
-  if (isLastDayOfMonth(target, TZ)) {
-    const monthKey = target.slice(0, 7); // YYYY-MM
-    const monthPath = path.join("month", `${monthKey}.json`);
-
-    const monthExisting = await readJsonIfExists(monthPath);
-    if (!monthExisting || !isGoodSnapshot(monthExisting)) {
-      await writeJsonAtomic(monthPath, snapshot);
-      console.log(`[daily] Fechamento mensal criado/atualizado: ${monthPath}`);
+  if (!targetDate) {
+    if (MODE === "daily") {
+      // D-1 em TZ (aprox: agora - 24h)
+      targetDate = ymdInTZ(new Date(now.getTime() - 24 * 60 * 60 * 1000), TZ);
     } else {
-      console.log(`[daily] Fechamento mensal já existe bom: ${monthPath}`);
+      // month_close: usa o "hoje" em TZ (o fechamento é do mês corrente em UTC)
+      targetDate = ymdInTZ(now, TZ);
     }
   }
-}
 
-async function runMonthCloseCandidate() {
-  // roda só nos dias 28-31 às 23:58 BRT (cron candidato).
-  // aqui a gente checa se HOJE é o último dia do mês em BRT.
-  const today = ymdInTZ(new Date(), TZ);
+  const dataDir = path.join(process.cwd(), "data");
+  const monthDir = path.join(process.cwd(), "month");
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.mkdirSync(monthDir, { recursive: true });
 
-  if (!isLastDayOfMonth(today, TZ)) {
-    console.log(`[month-close] Hoje (${today}) NÃO é último dia do mês — saindo sem fazer nada.`);
-    return;
+  const outPath = path.join(dataDir, `${targetDate}.json`);
+
+  // Se já existe e está válido, não sobrescreve (a não ser FORCE=1)
+  if (!FORCE) {
+    const prev = loadIfExists(outPath);
+    const prevMetrics = prev?.data;
+    if (prev && isValidMetrics(prevMetrics)) {
+      console.log(`Snapshot ${targetDate} já existe e está OK. Pulando.`);
+    } else {
+      if (prev) console.log(`Snapshot ${targetDate} existe mas está inválido. Vou sobrescrever.`);
+    }
   }
 
-  const { url, data } = await fetchMetrics24h();
+  // Sempre buscar fresh (ts) e sempre pedir 24h pro Cloudflare
+  const url = addQuery(METRICS_URL, { hours: 24, ts: Date.now() });
+  console.log(`Buscando metrics: ${url}`);
 
-  const snapshot = {
-    snapshot_date_local: today,
-    captured_at_utc: new Date().toISOString(),
-    tz: TZ,
-    mode: "month-close(last-day)",
-    source: url,
-    data,
-  };
+  const metrics = await fetchJsonWithRetry(url, 3);
 
-  if (!isGoodSnapshot(snapshot)) {
-    console.error("[month-close] Snapshot inválido (Upstash/Cloudflare não ok).");
-    console.error(JSON.stringify(snapshot, null, 2));
-    throw new Error("Month-close inválido: upstash ok=false ou cloudflare ok=false");
+  if (!isValidMetrics(metrics)) {
+    console.error("ERRO: /metrics retornou dados inválidos (Upstash ou Cloudflare não ok).");
+    console.error(JSON.stringify(metrics, null, 2));
+    process.exit(1);
   }
 
-  const monthKey = today.slice(0, 7); // YYYY-MM
-  const monthPath = path.join("month", `${monthKey}.json`);
-
-  await writeJsonAtomic(monthPath, snapshot);
-  console.log(`[month-close] Fechamento mensal gravado: ${monthPath}`);
-}
-
-async function main() {
-  console.log(`RUN_MODE=${RUN_MODE} TZ=${TZ}`);
-
-  await ensureDir("data");
-  await ensureDir("month");
-
-  if (RUN_MODE === "daily") {
-    await runDaily();
-    return;
+  // Se já existe válido e não é FORCE, não regrava
+  if (!FORCE) {
+    const prev = loadIfExists(outPath);
+    if (prev && isValidMetrics(prev?.data)) {
+      // ok, pula regravação
+    } else {
+      const snapshot = {
+        snapshot_date: targetDate,
+        fetched_at_utc: new Date().toISOString(),
+        tz: TZ,
+        mode: MODE,
+        source: METRICS_URL,
+        data: metrics,
+      };
+      fs.writeFileSync(outPath, JSON.stringify(snapshot, null, 2));
+      console.log(`Gravado: ${path.relative(process.cwd(), outPath)}`);
+    }
+  } else {
+    const snapshot = {
+      snapshot_date: targetDate,
+      fetched_at_utc: new Date().toISOString(),
+      tz: TZ,
+      mode: MODE,
+      source: METRICS_URL,
+      data: metrics,
+    };
+    fs.writeFileSync(outPath, JSON.stringify(snapshot, null, 2));
+    console.log(`(FORCE) Gravado: ${path.relative(process.cwd(), outPath)}`);
   }
 
-  if (RUN_MODE === "month-close") {
-    await runMonthCloseCandidate();
-    return;
-  }
+  // Fechamento mensal (UTC): salva o “total do mês” antes de virar
+  if (MODE === "month_close") {
+    const mk = monthKeyUTC(now);
+    const monthPath = path.join(monthDir, `${mk}.json`);
 
-  // fallback
-  await runDaily();
+    const monthFile = {
+      month: mk, // YYYY-MM (UTC)
+      closed_at_utc: new Date().toISOString(),
+      note: "Fechamento mensal via Upstash month-to-date (UTC).",
+      source: METRICS_URL,
+      totals: {
+        total_monthly_requests: metrics.upstash.total_monthly_requests,
+        monthly_reads: metrics.upstash.monthly_reads,
+        monthly_writes: metrics.upstash.monthly_writes,
+        daily_net_commands: metrics.upstash.daily_net_commands,
+        current_storage_bytes: metrics.upstash.current_storage_bytes,
+        monthly_billing_usd: metrics.upstash.monthly_billing_usd,
+      },
+    };
+
+    fs.writeFileSync(monthPath, JSON.stringify(monthFile, null, 2));
+    console.log(`Fechamento mensal gravado: ${path.relative(process.cwd(), monthPath)}`);
+  }
 }
 
 main().catch((e) => {
-  console.error(e);
+  console.error("FALHA geral:", e?.stack || e?.message || e);
   process.exit(1);
 });
