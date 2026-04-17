@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "captured_at": "2026-04-17T13:11:29.129Z",
+  "tz": "America/Sao_Paulo",
+  "mode": "manual/other",
+  "target_date": "2026-04-16",
+  "upstash": {
+    "ok": true,
+    "total_monthly_requests": 11581,
+    "monthly_reads": 3569,
+    "monthly_writes": 8012,
+    "daily_net_commands": 122,
+    "current_storage_bytes": 12847193,
+    "monthly_billing_usd": 0
+  },
+  "cloudflare": {
+    "ok": true,
+    "requests": 95,
+    "subrequests": 74,
+    "errors": 0,
+    "cpu_p50_us": 922,
+    "cpu_p90_us": 1269,
+    "cpu_p99_us": 1821
+  },
+  "period": {
+    "mode": "hours",
+    "hours": 1,
+    "month": null,
+    "from": null,
+    "to": null,
+    "status": "success",
+    "scriptName": "crr-api"
+  }
+}
