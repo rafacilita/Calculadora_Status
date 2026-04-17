@@ -1,154 +1,144 @@
-// scripts/snapshot.js
-import fs from "fs";
-import path from "path";
+const fs = require("fs");
+const path = require("path");
 
-function pad2(n) {
-  return String(n).padStart(2, "0");
+const METRICS_URL = process.env.METRICS_URL;
+if (!METRICS_URL) {
+  console.error("Missing METRICS_URL secret.");
+  process.exit(1);
 }
+
+const SNAP_MODE = process.env.SNAP_MODE || "d1"; // d1 | month_guard
+const TZ = "America/Sao_Paulo";
 
 function ymdInTZ(date, tz) {
-  // Retorna YYYY-MM-DD no fuso tz
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-
-  const get = (type) => parts.find((p) => p.type === type)?.value;
-  return `${get("year")}-${get("month")}-${get("day")}`;
+  // en-CA -> YYYY-MM-DD
+  return date.toLocaleDateString("en-CA", { timeZone: tz });
 }
 
-function hmInTZ(date, tz) {
-  // Retorna HH:MM no fuso tz
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: tz,
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).formatToParts(date);
-
-  const get = (type) => parts.find((p) => p.type === type)?.value;
-  return `${get("hour")}:${get("minute")}`;
+function ymInTZ(date, tz) {
+  const ymd = ymdInTZ(date, tz);
+  return ymd.slice(0, 7);
 }
 
-function addDays(date, days) {
-  const d = new Date(date.getTime());
-  d.setUTCDate(d.getUTCDate() + days);
-  return d;
+function lastDayOfMonth(year, month1to12) {
+  // day 0 of next month = last day of current month
+  return new Date(Date.UTC(year, month1to12, 0)).getUTCDate();
 }
 
-function ensureDir(p) {
-  fs.mkdirSync(p, { recursive: true });
+function parseYMD(ymd) {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return { y, m, d };
+}
+
+function ensureDir(dir) {
+  fs.mkdirSync(dir, { recursive: true });
 }
 
 async function fetchJson(url) {
-  const res = await fetch(url, {
-    headers: { "Accept": "application/json" },
-  });
+  const u = url.includes("?") ? `${url}&ts=${Date.now()}` : `${url}?ts=${Date.now()}`;
+  const res = await fetch(u, { headers: { Accept: "application/json" } });
   const text = await res.text();
   let json = null;
-  try { json = JSON.parse(text); } catch {}
+  try { json = JSON.parse(text); } catch { /* ignore */ }
   if (!res.ok) {
-    throw new Error(`HTTP ${res.status} ${res.statusText} :: ${text.slice(0, 200)}`);
-  }
-  if (!json || json.ok !== true) {
-    throw new Error(`Resposta inválida do metrics: ${text.slice(0, 200)}`);
+    throw new Error(`HTTP ${res.status} from METRICS_URL: ${text.slice(0, 300)}`);
   }
   return json;
 }
 
-function writeJson(filePath, obj) {
-  fs.writeFileSync(filePath, JSON.stringify(obj, null, 2) + "\n", "utf8");
+function readJsonIfExists(file) {
+  try {
+    if (!fs.existsSync(file)) return null;
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function isSnapshotBad(j) {
+  // “ruim” = não tem estrutura mínima
+  if (!j || typeof j !== "object") return true;
+  if (!j.upstash || !j.cloudflare) return true;
+  if (j.upstash.ok === false && j.cloudflare.ok === false) return true;
+  return false;
+}
+
+function writeJson(file, obj) {
+  fs.writeFileSync(file, JSON.stringify(obj, null, 2) + "\n", "utf8");
 }
 
 (async () => {
-  const TZ = process.env.TZ || "America/Sao_Paulo";
-  const METRICS_URL = process.env.METRICS_URL;
-
-  if (!METRICS_URL) {
-    console.error("Faltou METRICS_URL (secret).");
-    process.exit(1);
-  }
-
-  const now = new Date();
-  const nowHM = hmInTZ(now, TZ);
-  const todayYMD = ymdInTZ(now, TZ);
-
-  // Detecta o modo baseado no horário BRT aproximado
-  // (GitHub schedule pode atrasar alguns minutos)
-  const isPrecloseWindow = (nowHM >= "23:30" && nowHM <= "23:59");
-  const isD1Window = (nowHM >= "00:00" && nowHM <= "00:40");
-
-  const mode = isPrecloseWindow ? "preclose" : (isD1Window ? "d-1" : "manual/other");
-
-  // targetDate:
-  // - preclose: salva o DIA ATUAL (quase fechado)
-  // - d-1: salva o DIA ANTERIOR
-  const targetDate = mode === "preclose"
-    ? todayYMD
-    : ymdInTZ(addDays(now, -1), TZ);
-
-  // No dia 1, o d-1 tentaria salvar o último dia do mês anterior,
-  // mas os contadores do Upstash podem já ter “resetado”.
-  // Para não sobrescrever um fechamento bom (pré-fechamento de ontem),
-  // a gente simplesmente não grava o d-1 no dia 1.
-  const todayDay = Number(todayYMD.slice(8, 10));
-  if (mode === "d-1" && todayDay === 1) {
-    console.log(`[skip] Dia 1 detectado. Pulando d-1 para evitar reset do Upstash sobrescrever o último dia do mês anterior.`);
-    process.exit(0);
-  }
-
-  console.log(`[run] TZ=${TZ} now=${todayYMD} ${nowHM} mode=${mode} target=${targetDate}`);
-
-  const metrics = await fetchJson(METRICS_URL);
-
-  // normaliza o payload do snapshot (mantém simples e estável)
-  const snap = {
-    ok: true,
-    captured_at: new Date().toISOString(),
-    tz: TZ,
-    mode,
-    target_date: targetDate,
-    upstash: metrics.upstash || null,
-    cloudflare: metrics.cloudflare || null,
-    period: metrics.period || null,
-  };
-
   ensureDir("data");
   ensureDir("month");
 
-  const dataFile = path.join("data", `${targetDate}.json`);
-  writeJson(dataFile, snap);
-  console.log(`[write] ${dataFile}`);
+  const now = new Date();
+  const todaySP = ymdInTZ(now, TZ);
 
-  // Fechamento mensal: só faz no preclose quando amanhã é dia 1
-  if (mode === "preclose") {
-    const tomorrowYMD = ymdInTZ(addDays(now, 1), TZ);
-    const tomorrowDay = Number(tomorrowYMD.slice(8, 10));
+  if (SNAP_MODE === "d1") {
+    // snapshot D-1 (ontem no fuso de SP)
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const ymd = ymdInTZ(yesterday, TZ);
+    const outFile = path.join("data", `${ymd}.json`);
 
-    if (tomorrowDay === 1) {
-      const monthKey = targetDate.slice(0, 7); // YYYY-MM (mês que está fechando)
-      const monthFile = path.join("month", `${monthKey}.json`);
-
-      const monthClose = {
-        ok: true,
-        closed_month: monthKey,
-        closed_at: new Date().toISOString(),
-        tz: TZ,
-        source: "preclose",
-        snapshot_file: `data/${targetDate}.json`,
-        upstash: metrics.upstash || null,
-        cloudflare: metrics.cloudflare || null,
-      };
-
-      writeJson(monthFile, monthClose);
-      console.log(`[month-close] ${monthFile}`);
+    // Não sobrescreve se já existe e parece ok (protege virada do mês)
+    const existing = readJsonIfExists(outFile);
+    if (existing && !isSnapshotBad(existing)) {
+      console.log(`[d1] ${outFile} já existe e parece ok. Skip.`);
+      return;
     }
+
+    const metrics = await fetchJson(METRICS_URL);
+    metrics.meta = {
+      captured_at_utc: new Date().toISOString(),
+      mode: "d1",
+      target_day_sp: ymd
+    };
+
+    writeJson(outFile, metrics);
+    console.log(`[d1] wrote ${outFile}`);
+    return;
   }
 
-  process.exit(0);
+  // month_guard: só age se HOJE (SP) é o último dia do mês
+  const { y, m, d } = parseYMD(todaySP);
+  const last = lastDayOfMonth(y, m);
+  if (d !== last) {
+    console.log(`[month_guard] Hoje (${todaySP}) não é último dia do mês. Skip.`);
+    return;
+  }
+
+  const metrics = await fetchJson(METRICS_URL);
+  metrics.meta = {
+    captured_at_utc: new Date().toISOString(),
+    mode: "month_guard",
+    target_day_sp: todaySP,
+    target_month_sp: `${y}-${String(m).padStart(2, "0")}`
+  };
+
+  // salva snapshot do ÚLTIMO DIA (pra não depender do dia 1, quando pode ter reset)
+  const dayFile = path.join("data", `${todaySP}.json`);
+  const oldDay = readJsonIfExists(dayFile);
+
+  // aqui PODE sobrescrever se o novo for “mais completo”
+  if (!oldDay || isSnapshotBad(oldDay) || (oldDay.meta?.captured_at_utc < metrics.meta.captured_at_utc)) {
+    writeJson(dayFile, metrics);
+    console.log(`[month_guard] wrote ${dayFile}`);
+  } else {
+    console.log(`[month_guard] ${dayFile} já está melhor/mais novo. Skip.`);
+  }
+
+  // fechamento mensal (congela o mês)
+  const ym = ymInTZ(now, TZ);
+  const monthFile = path.join("month", `${ym}.json`);
+  const oldMonth = readJsonIfExists(monthFile);
+
+  if (!oldMonth || isSnapshotBad(oldMonth) || (oldMonth.meta?.captured_at_utc < metrics.meta.captured_at_utc)) {
+    writeJson(monthFile, metrics);
+    console.log(`[month_guard] wrote ${monthFile}`);
+  } else {
+    console.log(`[month_guard] ${monthFile} já está melhor/mais novo. Skip.`);
+  }
 })().catch((e) => {
-  console.error("[fatal]", e?.stack || e?.message || String(e));
+  console.error("snapshot failed:", e);
   process.exit(1);
 });
