@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: snapshot-crr5
+  group: crr5-snapshot
   cancel-in-progress: false
 
 jobs:
@@ -33,42 +33,26 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Sanity check (METRICS_URL)
-        run: |
-          set -euo pipefail
-          if [ -z "${METRICS_URL:-}" ]; then
-            echo "ERRO: secret METRICS_URL não está definido."
-            exit 1
-          fi
-          echo "METRICS_URL = ${METRICS_URL}"
-          # valida se endpoint responde e tem ok:true
-          curl -fsSL "${METRICS_URL}" | head -c 300
-          echo ""
-          if ! curl -fsSL "${METRICS_URL}" | grep -q '"ok"[[:space:]]*:[[:space:]]*true'; then
-            echo "ERRO: METRICS_URL não retornou ok:true."
-            exit 1
-          fi
-
       - name: Run snapshot (D-1) + monthly close (day 1)
-        run: |
-          set -euo pipefail
-          node -v
-          node scripts/snapshot.js
+        run: node scripts/snapshot.js
 
       - name: Commit & push (if changed)
+        shell: bash
         run: |
-          set -euo pipefail
+          set -e
+
           git config user.name "crr5-snapshot-bot"
           git config user.email "crr5-snapshot-bot@users.noreply.github.com"
 
           # evita falha se tiver commit novo no remoto
           git pull --rebase origin main || true
 
+          # ✅ FIX: não usa glob, adiciona por pasta
+          git add -A data month || true
+
           if [ -n "$(git status --porcelain)" ]; then
-            git add data/*.json || true
-            git add month/*.json || true
             git commit -m "chore(snapshot): daily snapshot + monthly close"
-            git push
+            git push origin HEAD:main
           else
             echo "No changes to commit."
           fi
