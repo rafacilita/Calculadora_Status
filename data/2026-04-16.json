@@ -1,12 +1,12 @@
 {
-  "snapshot_date_local": "2026-04-16",
-  "captured_at_utc": "2026-04-17T15:45:40.971Z",
+  "snapshot_date": "2026-04-16",
+  "fetched_at_utc": "2026-04-17T16:58:33.863Z",
   "tz": "America/Sao_Paulo",
-  "mode": "daily(D-1)",
-  "source": "https://calculadora-status.pages.dev/metrics?hours=24&ts=1776440739246",
+  "mode": "daily",
+  "source": "https://calculadora-status.pages.dev/metrics",
   "data": {
     "ok": true,
-    "at": "2026-04-17T15:45:39.348Z",
+    "at": "2026-04-17T16:58:33.173Z",
     "period": {
       "mode": "hours",
       "hours": 24,
@@ -18,20 +18,20 @@
     },
     "upstash": {
       "ok": true,
-      "total_monthly_requests": 11797,
-      "monthly_reads": 3627,
-      "monthly_writes": 8170,
-      "daily_net_commands": 392,
-      "current_storage_bytes": 12824461,
+      "total_monthly_requests": 11875,
+      "monthly_reads": 3650,
+      "monthly_writes": 8225,
+      "daily_net_commands": 474,
+      "current_storage_bytes": 12828974,
       "monthly_billing_usd": 0
     },
     "cloudflare": {
       "ok": true,
-      "requests": 1296,
-      "subrequests": 1074,
+      "requests": 1257,
+      "subrequests": 1034,
       "errors": 0,
-      "cpu_p50_us": 910,
-      "cpu_p90_us": 1355,
+      "cpu_p50_us": 911,
+      "cpu_p90_us": 1365,
       "cpu_p99_us": 1887
     }
   }
