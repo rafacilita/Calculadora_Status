@@ -1,34 +1,38 @@
 {
-  "ok": true,
-  "captured_at": "2026-04-17T13:24:35.326Z",
+  "snapshot_date_local": "2026-04-16",
+  "captured_at_utc": "2026-04-17T15:45:40.971Z",
   "tz": "America/Sao_Paulo",
-  "mode": "manual/other",
-  "target_date": "2026-04-16",
-  "upstash": {
-    "ok": false,
-    "total_monthly_requests": null,
-    "monthly_reads": null,
-    "monthly_writes": null,
-    "daily_net_commands": null,
-    "current_storage_bytes": null,
-    "monthly_billing_usd": null
-  },
-  "cloudflare": {
+  "mode": "daily(D-1)",
+  "source": "https://calculadora-status.pages.dev/metrics?hours=24&ts=1776440739246",
+  "data": {
     "ok": true,
-    "requests": 116,
-    "subrequests": 88,
-    "errors": 0,
-    "cpu_p50_us": 905,
-    "cpu_p90_us": 1246,
-    "cpu_p99_us": 1812
-  },
-  "period": {
-    "mode": "hours",
-    "hours": 1,
-    "month": null,
-    "from": null,
-    "to": null,
-    "status": "success",
-    "scriptName": "crr-api"
+    "at": "2026-04-17T15:45:39.348Z",
+    "period": {
+      "mode": "hours",
+      "hours": 24,
+      "month": null,
+      "from": null,
+      "to": null,
+      "status": "success",
+      "scriptName": "crr-api"
+    },
+    "upstash": {
+      "ok": true,
+      "total_monthly_requests": 11797,
+      "monthly_reads": 3627,
+      "monthly_writes": 8170,
+      "daily_net_commands": 392,
+      "current_storage_bytes": 12824461,
+      "monthly_billing_usd": 0
+    },
+    "cloudflare": {
+      "ok": true,
+      "requests": 1296,
+      "subrequests": 1074,
+      "errors": 0,
+      "cpu_p50_us": 910,
+      "cpu_p90_us": 1355,
+      "cpu_p99_us": 1887
+    }
   }
 }
