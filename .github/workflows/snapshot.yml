@@ -1,19 +1,17 @@
-name: Snapshot diário CRR5 (D-1) + Pré-fechamento + Fechamento Mensal
+name: Snapshot diário CRR5 (D-1) + Fechamento Mensal
 
 on:
   workflow_dispatch:
   schedule:
-    # 00:10 BRT (UTC-3) => 03:10 UTC  (snapshot D-1)
+    # 00:10 BRT (UTC-3) => 03:10 UTC
     - cron: "10 3 * * *"
-    # 23:55 BRT (UTC-3) => 02:55 UTC  (pré-fechamento do dia / base do fechamento mensal)
-    - cron: "55 2 * * *"
 
 permissions:
   contents: write
 
 concurrency:
   group: snapshot-crr5
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   snapshot:
@@ -30,31 +28,47 @@ jobs:
           persist-credentials: true
           fetch-depth: 0
 
-      - name: Sync com remoto (antes de gerar arquivos)
-        run: |
-          git pull --rebase --autostash origin main || true
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
-      - name: Garantir pastas
+      - name: Sanity check (METRICS_URL)
         run: |
-          mkdir -p data month
+          set -euo pipefail
+          if [ -z "${METRICS_URL:-}" ]; then
+            echo "ERRO: secret METRICS_URL não está definido."
+            exit 1
+          fi
+          echo "METRICS_URL = ${METRICS_URL}"
+          # valida se endpoint responde e tem ok:true
+          curl -fsSL "${METRICS_URL}" | head -c 300
+          echo ""
+          if ! curl -fsSL "${METRICS_URL}" | grep -q '"ok"[[:space:]]*:[[:space:]]*true'; then
+            echo "ERRO: METRICS_URL não retornou ok:true."
+            exit 1
+          fi
 
-      - name: Rodar snapshot (auto-detect por horário)
-        run: node scripts/snapshot.js
-
-      - name: Commit & push (se mudou)
+      - name: Run snapshot (D-1) + monthly close (day 1)
         run: |
+          set -euo pipefail
+          node -v
+          node scripts/snapshot.js
+
+      - name: Commit & push (if changed)
+        run: |
+          set -euo pipefail
           git config user.name "crr5-snapshot-bot"
           git config user.email "crr5-snapshot-bot@users.noreply.github.com"
 
+          # evita falha se tiver commit novo no remoto
+          git pull --rebase origin main || true
+
           if [ -n "$(git status --porcelain)" ]; then
-            git add data/*.json month/*.json || true
-            git commit -m "chore(snapshot): daily + preclose + monthly close"
-            git push origin HEAD:main
+            git add data/*.json || true
+            git add month/*.json || true
+            git commit -m "chore(snapshot): daily snapshot + monthly close"
+            git push
           else
             echo "No changes to commit."
           fi
