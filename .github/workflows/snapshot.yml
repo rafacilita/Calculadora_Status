@@ -1,21 +1,27 @@
-name: Snapshot diário CRR5 (D-1) + Fechamento Mensal
+name: Snapshot diário CRR5 (D-1) + Pré-fechamento + Fechamento Mensal
 
 on:
   workflow_dispatch:
   schedule:
-    # 00:10 BRT (UTC-3) => 03:10 UTC
+    # 00:10 BRT (UTC-3) => 03:10 UTC  (snapshot D-1)
     - cron: "10 3 * * *"
+    # 23:55 BRT (UTC-3) => 02:55 UTC  (pré-fechamento do dia / base do fechamento mensal)
+    - cron: "55 2 * * *"
 
 permissions:
   contents: write
+
+concurrency:
+  group: snapshot-crr5
+  cancel-in-progress: true
 
 jobs:
   snapshot:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-      METRICS_URL: ${{ secrets.METRICS_URL }}
       TZ: America/Sao_Paulo
+      METRICS_URL: ${{ secrets.METRICS_URL }}
 
     steps:
       - name: Checkout repo
@@ -24,26 +30,31 @@ jobs:
           persist-credentials: true
           fetch-depth: 0
 
+      - name: Sync com remoto (antes de gerar arquivos)
+        run: |
+          git pull --rebase --autostash origin main || true
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
-      - name: Run snapshot (D-1) + monthly close (day 1)
+      - name: Garantir pastas
+        run: |
+          mkdir -p data month
+
+      - name: Rodar snapshot (auto-detect por horário)
         run: node scripts/snapshot.js
 
-      - name: Commit & push (if changed)
+      - name: Commit & push (se mudou)
         run: |
           git config user.name "crr5-snapshot-bot"
           git config user.email "crr5-snapshot-bot@users.noreply.github.com"
 
-          # evita falha se tiver commit novo no remoto
-          git pull --rebase origin main || true
-
           if [ -n "$(git status --porcelain)" ]; then
             git add data/*.json month/*.json || true
-            git commit -m "chore(snapshot): daily snapshot + monthly close"
-            git push
+            git commit -m "chore(snapshot): daily + preclose + monthly close"
+            git push origin HEAD:main
           else
             echo "No changes to commit."
           fi
