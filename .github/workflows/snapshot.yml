@@ -2,48 +2,24 @@ name: Snapshot diário CRR5 (D-1) + Fechamento Mensal
 
 on:
   workflow_dispatch:
-    inputs:
-      mode:
-        description: "daily | month_close"
-        required: false
-        default: "daily"
-      target_date:
-        description: "YYYY-MM-DD (opcional, só pra testar/reprocessar um dia)"
-        required: false
-        default: ""
-      force:
-        description: "1 = sobrescreve mesmo se já existir"
-        required: false
-        default: "0"
-
   schedule:
-    # 00:10 BRT (UTC-3) => 03:10 UTC
+    # Diário: 00:10 BRT (UTC-3) => 03:10 UTC
     - cron: "10 3 * * *"
-
-    # 23:55 UTC nos dias 28-31 (script confirma se é último dia do mês)
-    - cron: "55 23 28-31 * *"
+    # Candidato a fechamento mensal: 23:55 BRT => 02:55 UTC
+    # (o script só executa se HOJE for o último dia do mês em BRT)
+    - cron: "55 2 * * *"
 
 permissions:
   contents: write
 
-concurrency:
-  group: snapshot-crr5
-  cancel-in-progress: false
-
 jobs:
-  daily:
-    if: >
-      (github.event_name == 'schedule' && github.event.schedule == '10 3 * * *')
-      || (github.event_name == 'workflow_dispatch' && (github.event.inputs.mode == '' || github.event.inputs.mode == 'daily'))
-
+  snapshot:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
       TZ: America/Sao_Paulo
       METRICS_URL: ${{ secrets.METRICS_URL }}
-      MODE: daily
-      TARGET_DATE: ${{ github.event.inputs.target_date }}
-      FORCE: ${{ github.event.inputs.force }}
+      RUN_CRON: ${{ github.event.schedule }}
 
     steps:
       - name: Checkout repo
@@ -57,68 +33,30 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Run snapshot (daily D-1)
+      - name: Run snapshot
+        id: snap
         run: node scripts/snapshot.js
+        continue-on-error: true
 
       - name: Commit & push (if changed)
         run: |
           git config user.name "crr5-snapshot-bot"
           git config user.email "crr5-snapshot-bot@users.noreply.github.com"
 
+          # evita falha se tiver commit novo no remoto
           git pull --rebase origin main || true
 
-          git add -A data month
-
-          if git diff --cached --quiet; then
+          if [ -n "$(git status --porcelain)" ]; then
+            # sem glob pra não dar pathspec
+            git add data month || true
+            git commit -m "chore(snapshot): daily snapshot"
+            git push
+          else
             echo "No changes to commit."
-            exit 0
           fi
 
-          git commit -m "chore(snapshot): daily snapshot + monthly close"
-          git push
-
-  month_close:
-    if: >
-      (github.event_name == 'schedule' && github.event.schedule == '55 23 28-31 * *')
-      || (github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'month_close')
-
-    runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-      TZ: America/Sao_Paulo
-      METRICS_URL: ${{ secrets.METRICS_URL }}
-      MODE: month_close
-      TARGET_DATE: ${{ github.event.inputs.target_date }}
-      FORCE: ${{ github.event.inputs.force }}
-
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-          fetch-depth: 0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Run snapshot (month close, only if last day UTC)
-        run: node scripts/snapshot.js
-
-      - name: Commit & push (if changed)
+      - name: Fail se snapshot falhou (depois de commitar _failed)
+        if: steps.snap.outcome == 'failure'
         run: |
-          git config user.name "crr5-snapshot-bot"
-          git config user.email "crr5-snapshot-bot@users.noreply.github.com"
-
-          git pull --rebase origin main || true
-
-          git add -A data month
-
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-            exit 0
-          fi
-
-          git commit -m "chore(snapshot): daily snapshot + monthly close"
-          git push
+          echo "::error::Snapshot falhou após retries. Ver data/_failed/"
+          exit 1
