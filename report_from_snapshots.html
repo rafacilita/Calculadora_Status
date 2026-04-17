@@ -210,7 +210,35 @@
       a{color:#000}
       button{display:none}
     }
-  </style>
+  
+
+
+  /* --- UI clarity + advanced toggle --- */
+  .toggle{ display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:rgba(255,255,255,.02); }
+  .toggle input{ transform: scale(1.05); }
+  .legend{ display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; color:var(--muted); font-size:12px; }
+  .legend .item{ display:flex; align-items:center; gap:8px; }
+  .legend .dot{ width:10px; height:10px; border-radius:50%; background:currentColor; }
+  .adv{ display:none; }
+  body.show-adv .adv{ display:table-cell; }
+  body.show-adv .adv-block{ display:block; }
+  .adv-block{ display:none; }
+  .canvas-wrap{ position:relative; }
+  .chart-tooltip{
+    position:absolute; pointer-events:none; z-index:10;
+    min-width: 180px;
+    padding:10px 12px;
+    border:1px solid var(--border);
+    border-radius:12px;
+    background: rgba(10,13,20,.96);
+    box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    font-size:12px; color: var(--text);
+  }
+  .chart-tooltip .muted{ color: var(--muted); }
+  .chart-tooltip .row{ display:flex; justify-content:space-between; gap:12px; margin-top:6px; }
+  .chart-tooltip .key{ color: var(--muted); }
+  .chart-tooltip .val{ font-variant-numeric: tabular-nums; }
+</style>
 </head>
 <body>
 <header>
@@ -259,6 +287,16 @@
       <input id="basePath" type="text" value="./data" />
     </div>
 
+    <div class="ctrl">
+      <label class="muted">Exibição</label>
+      <label class="toggle">
+        <input type="checkbox" id="toggleAdvanced" />
+        <span>Mostrar métricas avançadas (saúde do Worker)</span>
+      </label>
+      <small class="muted">Por padrão, focamos em <b>criação</b> e <b>leitura</b> de CRR5.</small>
+    </div>
+
+
     <div style="display:flex; gap:10px; align-items:flex-end; margin-left:auto;">
       <button id="btnLoad">Carregar</button>
       <button id="btnCSV" class="secondary" disabled>Baixar CSV</button>
@@ -303,10 +341,11 @@
       </div>
 
       <div class="panel">
-        <h2>Gráficos (por dia)</h2>
+        <h2>Gráfico de uso (por dia)</h2>
         <p class="hint">Writes = “CRR5 gerados”. Reads = “CRR5 carregados”. CPU P99 é o “pior” nível de latência (quase sempre).</p>
         <div class="canvas-wrap">
           <canvas id="chart"></canvas>
+            <div id="chartTooltip" class="chart-tooltip" style="display:none"></div>
         </div>
         <div class="foot">
           <span class="muted">Dica: para apresentação, clique em <b>Imprimir/PDF</b>.</span>
@@ -321,21 +360,19 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr>
-              <th>Data</th>
-              <th>Writes (dia)</th>
-              <th>Reads (dia)</th>
-              <th>Commands (dia)</th>
-              <th>Storage (MB)</th>
-              <th>CF Requests (24h)</th>
-              <th>CF Subrequests (24h)</th>
-              <th>CF Errors (24h)</th>
-              <th>CPU P50 (ms)</th>
-              <th>CPU P90 (ms)</th>
-              <th>CPU P99 (ms)</th>
-              <th>Status snapshot</th>
-            </tr>
-          </thead>
+          <tr>
+            <th>DATA</th>
+            <th>CRR5 criados (dia)</th>
+            <th>CRR5 carregados (dia)</th>
+            <th>Reuso (reads/writes)</th>
+            <th>Comandos (dia)</th>
+            <th>Storage (MB)</th>
+            <th class="adv">CF Requests (24h)</th>
+            <th class="adv">CF Errors (24h)</th>
+            <th class="adv">CPU P99 (ms)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
           <tbody id="tbody"></tbody>
         </table>
       </div>
@@ -464,36 +501,45 @@
     return rows;
   }
 
-  function buildCSV(rows){
+  function buildCSV(rows, includeAdvanced=false){
     const header = [
-      "date","writes_day","reads_day","commands_day","storage_mb",
-      "cf_requests_24h","cf_subrequests_24h","cf_errors_24h",
-      "cpu_p50_ms","cpu_p90_ms","cpu_p99_ms","snapshot_present"
+      "date","writes_day","reads_day","reuse_ratio","commands_day","storage_mb",
     ];
+    if (includeAdvanced){
+      header.push("cf_requests_24h","cf_errors_24h","cpu_p99_ms");
+    }
+    header.push("snapshot_present");
     const lines = [header.join(",")];
+
     for (const r of rows){
       const storageMB = bytesToMB(r.x?.up_storage_bytes ?? null);
-      const cpu50 = usToMs(r.x?.cf_cpu_p50_us ?? null);
-      const cpu90 = usToMs(r.x?.cf_cpu_p90_us ?? null);
       const cpu99 = usToMs(r.x?.cf_cpu_p99_us ?? null);
+      const reuse = (r.d_writes && r.d_reads!=null) ? (r.d_reads / r.d_writes) : null;
 
-      lines.push([
+      const base = [
         r.ymd,
         r.d_writes ?? "",
         r.d_reads ?? "",
+        (reuse===null ? "" : reuse.toFixed(4)),
         r.d_cmds ?? "",
-        (storageMB===null?"":storageMB.toFixed(4)),
-        r.x?.cf_requests ?? "",
-        r.x?.cf_subrequests ?? "",
-        r.x?.cf_errors ?? "",
-        (cpu50===null?"":cpu50.toFixed(3)),
-        (cpu90===null?"":cpu90.toFixed(3)),
-        (cpu99===null?"":cpu99.toFixed(3)),
-        r.present ? "1" : "0",
-      ].join(","));
+        (storageMB===null ? "" : storageMB.toFixed(4)),
+      ];
+
+      if (includeAdvanced){
+        base.push(
+          r.x?.cf_requests ?? "",
+          r.x?.cf_errors ?? "",
+          (cpu99===null ? "" : cpu99.toFixed(3)),
+        );
+      }
+
+      base.push(r.present ? "1" : "0");
+      lines.push(base.join(","));
     }
+
     return lines.join("\n");
   }
+
   function download(filename, content, mime="text/plain"){
     const blob = new Blob([content], { type: mime });
     const url = URL.createObjectURL(blob);
@@ -511,200 +557,270 @@
     tb.innerHTML = "";
     for (const r of rows){
       const storageMB = bytesToMB(r.x?.up_storage_bytes ?? null);
-      const cpu50 = usToMs(r.x?.cf_cpu_p50_us ?? null);
-      const cpu90 = usToMs(r.x?.cf_cpu_p90_us ?? null);
       const cpu99 = usToMs(r.x?.cf_cpu_p99_us ?? null);
+      const reuse = (r.d_writes && r.d_reads!=null) ? (r.d_reads / r.d_writes) : null;
+
       const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${r.ymd}</td>
-        <td>${fmtInt(r.d_writes)}</td>
-        <td>${fmtInt(r.d_reads)}</td>
-        <td>${fmtInt(r.d_cmds)}</td>
-        <td>${storageMB===null ? "—" : fmtFloat(storageMB,2)}</td>
-        <td>${fmtInt(r.x?.cf_requests ?? null)}</td>
-        <td>${fmtInt(r.x?.cf_subrequests ?? null)}</td>
-        <td>${fmtInt(r.x?.cf_errors ?? null)}</td>
-        <td>${cpu50===null ? "—" : fmtFloat(cpu50,2)}</td>
-        <td>${cpu90===null ? "—" : fmtFloat(cpu90,2)}</td>
-        <td>${cpu99===null ? "—" : fmtFloat(cpu99,2)}</td>
-        <td class="${r.present ? "ok" : "muted"}">${r.present ? "ok" : "sem snapshot"}</td>
-      `;
+      tr.innerHTML = [
+        `<td>${escapeHtml(r.ymd)}</td>`,
+        `<td>${fmtInt(r.d_writes)}</td>`,
+        `<td>${fmtInt(r.d_reads)}</td>`,
+        `<td>${reuse===null ? "—" : (reuse.toFixed(2) + "x")}</td>`,
+        `<td>${fmtInt(r.d_cmds)}</td>`,
+        `<td>${storageMB===null ? "—" : storageMB.toFixed(2)}</td>`,
+
+        // Advanced (hidden by default)
+        `<td class="adv">${fmtInt(r.x?.cf_requests)}</td>`,
+        `<td class="adv">${fmtInt(r.x?.cf_errors)}</td>`,
+        `<td class="adv">${cpu99===null ? "—" : cpu99.toFixed(2)}</td>`,
+
+        `<td>${r.present ? '<span class="pill ok">ok</span>' : '<span class="pill warn">sem snapshot</span>'}</td>`,
+      ].join("");
+
       tb.appendChild(tr);
     }
   }
 
-  function renderKPIs(rows, periodLabel){
-    const present = rows.filter(r=>r.present);
-    const totalWrites = present.reduce((a,r)=>a + (r.d_writes||0), 0);
-    const totalReads = present.reduce((a,r)=>a + (r.d_reads||0), 0);
-    const totalCmds = present.reduce((a,r)=>a + (r.d_cmds||0), 0);
-    const totalErrors = present.reduce((a,r)=>a + (r.x?.cf_errors||0), 0);
-
-    const last = present[present.length-1] || null;
-    const lastStorageMB = bytesToMB(last?.x?.up_storage_bytes ?? null);
-    const lastCost = last?.x?.up_billing_usd ?? null;
-
-    const avgP99 = present.length ? present.reduce((a,r)=>a + (usToMs(r.x?.cf_cpu_p99_us||0)||0), 0) / present.length : null;
-
-    $("kpiWrites").textContent = fmtInt(totalWrites);
-    $("kpiReads").textContent = fmtInt(totalReads);
-    $("kpiCmds").textContent = fmtInt(totalCmds);
-    $("kpiErrors").textContent = fmtInt(totalErrors);
-
-    $("kpiWritesSub").textContent = present.length ? `${fmtInt(totalWrites/present.length)} / dia (média)` : "—";
-    $("kpiReadsSub").textContent  = present.length ? `${fmtInt(totalReads/present.length)} / dia (média)` : "—";
-    $("kpiCmdsSub").textContent   = present.length ? `${fmtInt(totalCmds/present.length)} / dia (média)` : "—";
-    $("kpiErrorsSub").textContent = avgP99===null ? "—" : `CPU P99 médio: ${fmtFloat(avgP99,2)} ms`;
-
-    $("sumPeriod").textContent = periodLabel;
-    $("sumCoverage").textContent = `${present.length}/${rows.length} dias (${fmtInt((present.length/rows.length)*100)}%)`;
-    $("sumReuse").textContent = totalWrites > 0 ? `${fmtFloat(totalReads/totalWrites,2)}x` : "—";
-    $("sumStorage").textContent = lastStorageMB===null ? "—" : `${fmtFloat(lastStorageMB,2)} MB`;
-    $("sumCost").textContent = lastCost===null ? "—" : fmtMoney(lastCost);
-    $("sumLast").textContent = last?.x?.fetched_at ? new Date(last.x.fetched_at).toLocaleString("pt-BR") : "—";
-
-    if (!present.length) setBadge("bad","sem dados");
-    else if (totalErrors>0) setBadge("warn","atenção");
-    else setBadge("warn","ok (sem erros)");
-  }
-
-  function drawChart(rows){
+function drawChart(rows){
     const canvas = $("chart");
+    const tip = $("chartTooltip");
+    const wrap = canvas.parentElement;
     const ctx = canvas.getContext("2d");
+
+    // Resize canvas to container (HiDPI)
     const dpr = window.devicePixelRatio || 1;
-    const cssW = canvas.clientWidth;
-    const cssH = canvas.clientHeight;
-    canvas.width = Math.floor(cssW * dpr);
-    canvas.height = Math.floor(cssH * dpr);
-    ctx.scale(dpr,dpr);
+    const W = wrap.clientWidth;
+    const H = 320;
+    canvas.width = Math.floor(W * dpr);
+    canvas.height = Math.floor(H * dpr);
+    canvas.style.width = W + "px";
+    canvas.style.height = H + "px";
+    ctx.setTransform(dpr,0,0,dpr,0,0);
 
-    ctx.clearRect(0,0,cssW,cssH);
-
-    const present = rows.filter(r=>r.present);
-    if (!present.length){
-      $("chartLegend").textContent = "Sem dados para o gráfico.";
-      return;
-    }
-
-    const labels = present.map(r=>r.ymd.slice(8));
-    const writes = present.map(r=>r.d_writes ?? 0);
-    const reads = present.map(r=>r.d_reads ?? 0);
-    const p99 = present.map(r=>usToMs(r.x?.cf_cpu_p99_us ?? null)).map(v=>v ?? 0);
-
-    const padL=44, padR=44, padT=14, padB=26;
-    const plotW=cssW-padL-padR, plotH=cssH-padT-padB;
-
-    const maxLeft = Math.max(1, ...writes, ...reads);
-    const maxRight = Math.max(1, ...p99);
+    const present = rows.filter(r => r.present && (r.d_writes!=null || r.d_reads!=null || r.d_cmds!=null));
     const n = present.length;
 
-    const x = (i)=> padL + (n===1? plotW/2 : i*(plotW/(n-1)));
-    const yL = (v)=> padT + (plotH - (v/maxLeft)*plotH);
-    const yR = (v)=> padT + (plotH - (v/maxRight)*plotH);
-
-    // grid
-    ctx.strokeStyle = "rgba(255,255,255,.08)";
-    ctx.lineWidth = 1;
-    for (let k=0;k<=4;k++){
-      const yy = padT + k*(plotH/4);
-      ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(padL+plotW, yy); ctx.stroke();
+    // empty state
+    ctx.clearRect(0,0,W,H);
+    if (!n){
+      ctx.fillStyle = "rgba(255,255,255,.6)";
+      ctx.font = "14px system-ui";
+      ctx.fillText("Sem dados suficientes para desenhar o gráfico.", 12, 24);
+      $("chartLegend").innerHTML = "";
+      canvas.onmousemove = null;
+      canvas.onmouseleave = null;
+      tip.style.display = "none";
+      return;
     }
 
-    // lines
-    function line(data, color, right=false){
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+    // Build series (daily deltas)
+    const series = [
+      { key: "d_writes", label: "CRR5 criados", color: "#A78BFA" },
+      { key: "d_reads",  label: "CRR5 carregados", color: "#60A5FA" },
+      { key: "d_cmds",   label: "Comandos", color: "#34D399" },
+    ];
+
+    const showAdv = document.body.classList.contains("show-adv");
+    const advSeries = showAdv ? [
+      { key: "cpu_p99_ms", label: "CPU P99 (ms)", color: "#FBBF24", axis: "right" },
+    ] : [];
+
+    const allSeries = series.concat(advSeries);
+
+    // Precompute values and scales
+    const xs = present.map((r,i)=>i);
+    const leftValues = (k)=>present.map(r=>r[k]??null).filter(v=>v!=null);
+    const maxLeft = Math.max(1, ...leftValues("d_writes"), ...leftValues("d_reads"), ...leftValues("d_cmds"));
+    const maxRight = showAdv ? Math.max(1, ...present.map(r=>r.x?.cf_cpu_p99_us!=null ? usToMs(r.x.cf_cpu_p99_us) : null).filter(v=>v!=null)) : 1;
+
+    const padL = 56, padR = showAdv ? 56 : 18, padT = 18, padB = 42;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+
+    const xAt = (i)=> padL + (n===1 ? plotW/2 : (i/(n-1))*plotW);
+    const yLeft = (v)=> padT + (1 - (v/maxLeft))*plotH;
+    const yRight = (v)=> padT + (1 - (v/maxRight))*plotH;
+
+    // Background grid
+    ctx.fillStyle = "rgba(255,255,255,.02)";
+    ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle = "rgba(255,255,255,.06)";
+    ctx.lineWidth = 1;
+
+    const gridLines = 4;
+    for (let g=0; g<=gridLines; g++){
+      const y = padT + (g/gridLines)*plotH;
       ctx.beginPath();
-      for (let i=0;i<n;i++){
-        const xx = x(i);
-        const yy = right ? yR(data[i]) : yL(data[i]);
-        if (i===0) ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
-      }
+      ctx.moveTo(padL, y);
+      ctx.lineTo(W-padR, y);
       ctx.stroke();
     }
-    line(writes,"rgba(45,212,191,.95)");
-    line(reads,"rgba(99,102,241,.95)");
-    line(p99,"rgba(251,191,36,.95)", true);
 
-    // x labels
-    ctx.fillStyle = "rgba(255,255,255,.55)";
-    ctx.font = "11px ui-sans-serif, system-ui";
-    const step = Math.ceil(n/10);
-    for(let i=0;i<n;i+=step){
-      const xx = x(i);
-      ctx.fillText(labels[i], xx-6, padT+plotH+18);
+    // Axes labels
+    ctx.fillStyle = "rgba(255,255,255,.65)";
+    ctx.font = "12px system-ui";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    for (let g=0; g<=gridLines; g++){
+      const val = Math.round((1 - g/gridLines) * maxLeft);
+      const y = padT + (g/gridLines)*plotH;
+      ctx.fillText(String(val), padL-10, y);
+    }
+    if (showAdv){
+      ctx.textAlign = "left";
+      for (let g=0; g<=gridLines; g++){
+        const val = ((1 - g/gridLines) * maxRight).toFixed(1);
+        const y = padT + (g/gridLines)*plotH;
+        ctx.fillText(val, W-padR+10, y);
+      }
     }
 
-    $("chartLegend").textContent = `Dias exibidos: ${present.length} • Esquerda: Reads/Writes • Direita: CPU P99`;
+    // X labels (dates)
+    const showEvery = n <= 10 ? 1 : (n <= 20 ? 2 : 3);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    for (let i=0; i<n; i+=showEvery){
+      const label = present[i].ymd.slice(5); // MM-DD
+      ctx.fillText(label, xAt(i), padT+plotH+10);
+    }
+
+    function pointsFor(key, axis="left"){
+      return present.map((r,i)=>{
+        let v = r[key];
+        if (key === "cpu_p99_ms"){
+          v = r.x?.cf_cpu_p99_us!=null ? usToMs(r.x.cf_cpu_p99_us) : null;
+        }
+        if (v==null) return null;
+        return { i, x: xAt(i), y: (axis==="right"? yRight(v): yLeft(v)), v };
+      }).filter(Boolean);
+    }
+
+    function drawSmooth(points, color, width=2.4){
+      if (points.length < 2) return;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+
+      for (let p=0; p<points.length-1; p++){
+        const curr = points[p];
+        const next = points[p+1];
+        const mx = (curr.x + next.x)/2;
+        const my = (curr.y + next.y)/2;
+        ctx.quadraticCurveTo(curr.x, curr.y, mx, my);
+      }
+      const last = points[points.length-1];
+      ctx.lineTo(last.x, last.y);
+      ctx.stroke();
+    }
+
+    function drawPoints(points, color){
+      ctx.fillStyle = color;
+      for (const p of points){
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3.2, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+
+    function labelLast(points, label, color){
+      if (!points.length) return;
+      const last = points[points.length-1];
+      const txt = `${label}: ${fmtInt(last.v)}`;
+      ctx.font = "12px system-ui";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "left";
+
+      const pad = 6;
+      const w = ctx.measureText(txt).width + pad*2;
+      const x = Math.min(W - padR - w - 6, last.x + 10);
+      const y = Math.max(padT + 10, Math.min(padT+plotH-10, last.y));
+
+      ctx.fillStyle = "rgba(0,0,0,.55)";
+      ctx.fillRect(x, y-12, w, 24);
+      ctx.strokeStyle = "rgba(255,255,255,.10)";
+      ctx.strokeRect(x, y-12, w, 24);
+
+      ctx.fillStyle = color;
+      ctx.fillText(txt, x+pad, y);
+    }
+
+    // Draw series
+    const seriesPoints = [];
+    for (const s of allSeries){
+      const pts = pointsFor(s.key, s.axis || "left");
+      seriesPoints.push({ ...s, pts });
+      drawSmooth(pts, s.color, s.axis==="right" ? 2.0 : 2.6);
+      drawPoints(pts, s.color);
+      // Rótulo (último ponto) — dá clareza sem poluir
+      labelLast(pts, s.label, s.color);
+    }
+
+    // Legend
+    $("chartLegend").innerHTML = seriesPoints.map(s =>
+      `<div class="item" style="color:${s.color}"><span class="dot"></span><span>${escapeHtml(s.label)}</span></div>`
+    ).join("");
+
+    // Hover tooltip (nearest by x)
+    const byIndex = {};
+    for (const sp of seriesPoints){
+      for (const p of sp.pts){
+        (byIndex[p.i] ||= []).push({label: sp.label, color: sp.color, v: p.v, axis: sp.axis || "left"});
+      }
+    }
+
+    function showTip(i, clientX, clientY){
+      const r = present[i];
+      const rows = byIndex[i] || [];
+      const dt = r.ymd;
+
+      let html = `<div class="muted">${escapeHtml(dt)}</div>`;
+      for (const it of rows){
+        const v = (it.label.includes("CPU") ? Number(it.v).toFixed(2) : fmtInt(it.v));
+        html += `<div class="row"><div class="key" style="color:${it.color}">${escapeHtml(it.label)}</div><div class="val">${escapeHtml(String(v))}</div></div>`;
+      }
+      tip.innerHTML = html;
+
+      const rect = wrap.getBoundingClientRect();
+      const x = clientX - rect.left + 12;
+      const y = clientY - rect.top + 12;
+
+      tip.style.display = "block";
+      // Keep inside box
+      const tw = tip.offsetWidth, th = tip.offsetHeight;
+      let left = x, top = y;
+      if (left + tw > W) left = W - tw - 10;
+      if (top + th > H) top = H - th - 10;
+      tip.style.left = Math.max(10,left) + "px";
+      tip.style.top = Math.max(10,top) + "px";
+    }
+
+    canvas.onmousemove = (ev)=>{
+      const rect = canvas.getBoundingClientRect();
+      const x = ev.clientX - rect.left;
+      // find nearest index by xAt
+      let bestI = 0, bestD = Infinity;
+      for (let i=0;i<n;i++){
+        const d = Math.abs(xAt(i) - x);
+        if (d < bestD){ bestD = d; bestI = i; }
+      }
+      showTip(bestI, ev.clientX, ev.clientY);
+    };
+    canvas.onmouseleave = ()=>{ tip.style.display = "none"; };
   }
 
-  async function loadRange(startUTC, endUTC){
-    const basePath = $("basePath").value.replace(/\/+$/,"");
-    const days = [];
-    let cur = new Date(startUTC.getTime());
-    while (cur <= endUTC){
-      days.push(ymdUTC(cur));
-      cur = addDays(cur, 1);
-    }
 
-    $("btnLoad").disabled = true;
-    $("btnLoad").textContent = "Carregando…";
-    setBadge("warn","carregando…");
-
-    const results = await mapLimit(days, 6, async (ymd) => {
-      const url = `${basePath}/${ymd}.json`;
-      const r = await fetchJson(url);
-      if (!r.ok) return { ymd, present:false, x:null };
-      return { ymd, present:true, x: extract(r.json) };
+  const toggleAdvanced = document.getElementById("toggleAdvanced");
+  if (toggleAdvanced){
+    toggleAdvanced.addEventListener("change", ()=>{
+      document.body.classList.toggle("show-adv", toggleAdvanced.checked);
+      if (window.__lastRows) drawChart(window.__lastRows);
     });
-
-    const rows = results.map(r=>({
-      ymd:r.ymd,
-      date: parseYMD(r.ymd),
-      present:r.present,
-      x:r.present ? r.x : null,
-      d_reads:null, d_writes:null, d_cmds:null
-    })).sort((a,b)=>a.date-b.date);
-
-    computeDeltas(rows);
-
-    renderKPIs(rows, `${rows[0].ymd} → ${rows[rows.length-1].ymd}`);
-    renderTable(rows);
-    drawChart(rows);
-
-    const csv = buildCSV(rows);
-    $("btnCSV").disabled = false;
-    $("btnPrint").disabled = false;
-    $("btnCSV").onclick = ()=> download(`relatorio_crr5_${rows[0].ymd}_a_${rows[rows.length-1].ymd}.csv`, csv, "text/csv");
-    $("btnPrint").onclick = ()=> window.print();
-
-    $("btnLoad").disabled = false;
-    $("btnLoad").textContent = "Carregar";
   }
 
-  $("btnLoad").addEventListener("click", async ()=>{
-    const mode = $("mode").value;
-    if (mode==="month"){
-      const val = $("month").value;
-      if (!val) return;
-      const [y,m] = val.split("-").map(Number);
-      const n = daysInMonthUTC(y,m);
-      await loadRange(new Date(Date.UTC(y,m-1,1)), new Date(Date.UTC(y,m-1,n)));
-      return;
-    }
-    if (mode==="week"){
-      const w = $("weekStart").value;
-      if (!w) return;
-      const start = parseYMD(w);
-      await loadRange(start, addDays(start,6));
-      return;
-    }
-    if (mode==="range"){
-      const s = $("start").value, e = $("end").value;
-      if (!s || !e) return;
-      await loadRange(parseYMD(s), parseYMD(e));
-    }
-  });
+
 </script>
 </body>
 </html>
