@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>CRR5 — Relatório de Uso</title>
   <style>
-    /* ── Design tokens ───────────────────────────────────────────────── */
     :root {
       --bg:        #f4f6f9;
       --surface:   #ffffff;
@@ -31,334 +30,139 @@
       --radius:    12px;
       --radius-sm: 8px;
       --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
-      --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      --mono: ui-monospace,"SF Mono","Cascadia Code",Menlo,monospace;
+      --sans: ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: var(--sans);
-      background: var(--bg);
-      color: var(--text);
-      font-size: 14px;
-      line-height: 1.5;
-      min-height: 100vh;
-    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh;}
+    .wrap{max-width:1100px;margin:0 auto;padding:20px 16px 48px;}
 
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; }
+    /* Top bar */
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);margin-bottom:12px;}
+    .topbar h1{font-size:16px;font-weight:700;color:var(--text);letter-spacing:-.01em;}
+    .topbar .sub{font-size:12px;color:var(--muted);margin-top:2px;}
+    .topbar .sub code{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border);padding:1px 5px;border-radius:4px;color:var(--muted);}
 
-    /* ── Top bar ─────────────────────────────────────────────────────── */
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-      padding: 14px 18px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-sm);
-      margin-bottom: 12px;
-    }
-    .topbar h1 { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -.01em; }
-    .topbar .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-    .topbar .sub code {
-      font-family: var(--mono);
-      font-size: 11px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      padding: 1px 5px;
-      border-radius: 4px;
-      color: var(--muted);
-    }
+    /* Badge */
+    #healthBadge{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid var(--warn-bdr);background:var(--warn-bg);color:var(--warn);white-space:nowrap;transition:all .2s;}
+    #healthBadge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
+    #healthBadge.ok {background:var(--ok-bg); border-color:var(--ok-border);  color:var(--ok);}
+    #healthBadge.bad{background:var(--bad-bg);border-color:var(--bad-border); color:var(--bad);}
 
-    /* ── Health badge ────────────────────────────────────────────────── */
-    #healthBadge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 11px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      border: 1px solid var(--warn-bdr);
-      background: var(--warn-bg);
-      color: var(--warn);
-      white-space: nowrap;
-      transition: all .2s;
-    }
-    #healthBadge::before {
-      content: "";
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: currentColor;
-      flex-shrink: 0;
-    }
-    #healthBadge.ok  { background: var(--ok-bg);  border-color: var(--ok-border);  color: var(--ok); }
-    #healthBadge.bad { background: var(--bad-bg); border-color: var(--bad-border); color: var(--bad); }
+    /* Controls */
+    .controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);margin-bottom:12px;}
+    .ctrl{display:flex;flex-direction:column;gap:4px;}
+    .ctrl label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;}
+    input,select{background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s;}
+    input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(14,165,233,.12);}
+    .ctrl-buttons{display:flex;gap:8px;align-items:flex-end;margin-left:auto;}
+    button{padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;border:1px solid transparent;transition:all .12s;}
+    button:active{transform:translateY(1px);}
+    button:disabled{opacity:.45;cursor:not-allowed;}
+    .btn-primary{background:var(--blue);border-color:var(--blue);color:#fff;}
+    .btn-primary:hover:not(:disabled){filter:brightness(1.08);}
+    .btn-secondary{background:var(--surface);border-color:var(--border2);color:var(--muted);}
+    .btn-secondary:hover:not(:disabled){background:var(--surface2);color:var(--text);}
 
-    /* ── Controls ────────────────────────────────────────────────────── */
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-end;
-      gap: 10px;
-      padding: 12px 14px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow-sm);
-      margin-bottom: 12px;
-    }
-    .ctrl { display: flex; flex-direction: column; gap: 4px; }
-    .ctrl label {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--muted);
-      letter-spacing: .05em;
-      text-transform: uppercase;
-    }
-    input, select {
-      background: var(--surface2);
-      color: var(--text);
-      border: 1px solid var(--border2);
-      border-radius: var(--radius-sm);
-      padding: 7px 10px;
-      font-size: 13px;
-      font-family: inherit;
-      outline: none;
-      transition: border-color .15s, box-shadow .15s;
-    }
-    input:focus, select:focus {
-      border-color: var(--blue);
-      box-shadow: 0 0 0 3px rgba(14,165,233,.12);
-    }
-    .ctrl-buttons { display: flex; gap: 8px; align-items: flex-end; margin-left: auto; }
-    button {
-      padding: 7px 14px;
-      border-radius: var(--radius-sm);
-      font-size: 13px;
-      font-weight: 700;
-      font-family: inherit;
-      cursor: pointer;
-      border: 1px solid transparent;
-      transition: all .12s;
-    }
-    button:active { transform: translateY(1px); }
-    button:disabled { opacity: .45; cursor: not-allowed; }
-    .btn-primary  { background: var(--blue); border-color: var(--blue); color: #fff; }
-    .btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
-    .btn-secondary { background: var(--surface); border-color: var(--border2); color: var(--muted); }
-    .btn-secondary:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
+    /* KPIs */
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;}
+    @media(max-width:860px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+    @media(max-width:460px){.kpi-grid{grid-template-columns:1fr;}}
+    .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 16px 14px 19px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;}
+    .kpi::before{content:"";position:absolute;top:14px;bottom:14px;left:0;width:3px;border-radius:0 3px 3px 0;background:var(--accent,var(--border2));}
+    .kpi[data-accent="blue"]  {--accent:var(--blue);}
+    .kpi[data-accent="purple"]{--accent:var(--purple);}
+    .kpi[data-accent="teal"]  {--accent:var(--teal);}
+    .kpi[data-accent="status"]{--accent:var(--kpi-status-color,var(--border2));}
+    .kpi-label{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;}
+    .kpi-value{font-family:var(--mono);font-size:28px;font-weight:900;letter-spacing:-.02em;line-height:1;color:var(--text);margin-bottom:5px;}
+    .kpi-sub{font-size:11px;color:var(--muted2);}
+    #kpiStatus.ok  {color:var(--ok);}
+    #kpiStatus.warn{color:var(--warn);}
+    #kpiStatus.bad {color:var(--bad);}
 
-    /* ── KPI cards ───────────────────────────────────────────────────── */
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-    @media (max-width: 860px) { .kpi-grid { grid-template-columns: repeat(2,1fr); } }
-    @media (max-width: 460px) { .kpi-grid { grid-template-columns: 1fr; } }
+    /* Panels */
+    .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow-sm);margin-bottom:12px;}
+    .panel-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+    .panel-title{font-size:13px;font-weight:700;color:var(--text);}
+    .panel-foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--muted2);}
 
-    .kpi {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px 16px 14px 19px;
-      box-shadow: var(--shadow-sm);
-      position: relative;
-      overflow: hidden;
+    /* Chart series toggles */
+    .series-toggles{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+    .stoggle{
+      display:inline-flex;align-items:center;gap:5px;
+      padding:4px 10px;border-radius:999px;
+      font-size:12px;font-weight:600;cursor:pointer;
+      border:1px solid transparent;
+      transition:all .12s;user-select:none;
     }
-    .kpi::before {
-      content: "";
-      position: absolute;
-      top: 14px; bottom: 14px; left: 0;
-      width: 3px;
-      border-radius: 0 3px 3px 0;
-      background: var(--accent, var(--border2));
-    }
-    .kpi[data-accent="blue"]   { --accent: var(--blue); }
-    .kpi[data-accent="purple"] { --accent: var(--purple); }
-    .kpi[data-accent="teal"]   { --accent: var(--teal); }
-    .kpi[data-accent="status"] { --accent: var(--kpi-status-color, var(--border2)); }
+    .stoggle .sdot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:opacity .12s;}
+    .stoggle.active  {background:var(--scolor-bg);  border-color:var(--scolor-border); color:var(--scolor);}
+    .stoggle.inactive{background:var(--surface2);    border-color:var(--border);        color:var(--muted2);}
+    .stoggle.inactive .sdot{opacity:.35;}
 
-    .kpi-label {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--muted);
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      margin-bottom: 8px;
-    }
-    .kpi-value {
-      font-family: var(--mono);
-      font-size: 28px;
-      font-weight: 900;
-      letter-spacing: -.02em;
-      line-height: 1;
-      color: var(--text);
-      margin-bottom: 5px;
-    }
-    .kpi-sub { font-size: 11px; color: var(--muted2); }
-    #kpiStatus.ok   { color: var(--ok); }
-    #kpiStatus.warn { color: var(--warn); }
-    #kpiStatus.bad  { color: var(--bad); }
+    /* Canvas */
+    .canvas-wrap{border-radius:var(--radius-sm);overflow:hidden;background:var(--surface2);border:1px solid var(--border);}
+    canvas{width:100%;height:260px;display:block;}
+    .chart-empty{text-align:center;padding:40px 20px;color:var(--muted2);font-size:13px;}
+    .chart-empty .icon{font-size:26px;margin-bottom:6px;}
 
-    /* ── Panels ──────────────────────────────────────────────────────── */
-    .panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px;
-      box-shadow: var(--shadow-sm);
-      margin-bottom: 12px;
+    /* Baseline notice */
+    .baseline-note{
+      display:none;
+      font-size:11px;color:var(--muted2);margin-top:6px;
+      padding:5px 8px;background:var(--warn-bg);border:1px solid var(--warn-bdr);
+      border-radius:var(--radius-sm);
     }
-    .panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 14px;
-      flex-wrap: wrap;
-    }
-    .panel-title { font-size: 13px; font-weight: 700; color: var(--text); }
-    .panel-foot {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-      font-size: 11px;
-      color: var(--muted2);
-    }
+    .baseline-note.visible{display:block;}
 
-    /* ── Legend ──────────────────────────────────────────────────────── */
-    .legend { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
-    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
-    .legend-dot  { width: 20px; height: 3px; border-radius: 2px; }
+    /* Tooltip */
+    #tooltip{position:fixed;pointer-events:none;z-index:9999;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;box-shadow:0 4px 20px rgba(0,0,0,.12);min-width:150px;opacity:0;transition:opacity .1s;}
+    #tooltip.visible{opacity:1;}
+    .tt-date{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:7px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+    .tt-row{display:flex;justify-content:space-between;gap:16px;margin-top:4px;align-items:center;}
+    .tt-label{display:flex;align-items:center;gap:6px;color:var(--muted);}
+    .tt-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+    .tt-val{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);}
+    .tt-row.hidden{display:none;}
 
-    /* ── Chart ───────────────────────────────────────────────────────── */
-    .canvas-wrap {
-      border-radius: var(--radius-sm);
-      overflow: hidden;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-    }
-    canvas { width: 100%; height: 260px; display: block; }
-    .chart-empty {
-      text-align: center;
-      padding: 40px 20px;
-      color: var(--muted2);
-      font-size: 13px;
-    }
-    .chart-empty .icon { font-size: 26px; margin-bottom: 6px; }
+    /* Table */
+    .table-wrap{overflow-x:auto;border-radius:var(--radius-sm);border:1px solid var(--border);}
+    table{width:100%;border-collapse:collapse;min-width:440px;background:var(--surface);}
+    th{position:sticky;top:0;background:var(--surface2);padding:9px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:right;border-bottom:1px solid var(--border2);white-space:nowrap;}
+    th:first-child{text-align:left;}
+    td{padding:9px 12px;font-size:13px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--text);}
+    td:first-child{text-align:left;font-family:var(--mono);font-size:12px;color:var(--muted);}
+    td.num{font-family:var(--mono);}
+    td.status-ok  {color:var(--ok);  font-weight:700;}
+    td.status-warn{color:var(--warn);font-weight:700;}
+    td.status-bad {color:var(--muted2);}
+    td.first-day  {color:var(--muted2);font-style:italic;}
+    tr:last-child td{border-bottom:none;}
+    tr:hover td{background:var(--surface2);}
+    th.adv,td.adv{display:none;}
+    body.show-adv th.adv,body.show-adv td.adv{display:table-cell;}
 
-    /* ── Tooltip ─────────────────────────────────────────────────────── */
-    #tooltip {
-      position: fixed;
-      pointer-events: none;
-      z-index: 9999;
-      background: var(--surface);
-      border: 1px solid var(--border2);
-      border-radius: var(--radius-sm);
-      padding: 10px 12px;
-      font-size: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,.12);
-      min-width: 150px;
-      opacity: 0;
-      transition: opacity .1s;
-    }
-    #tooltip.visible { opacity: 1; }
-    .tt-date {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--muted);
-      letter-spacing: .05em;
-      text-transform: uppercase;
-      margin-bottom: 7px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid var(--border);
-    }
-    .tt-row   { display: flex; justify-content: space-between; gap: 16px; margin-top: 4px; align-items: center; }
-    .tt-label { display: flex; align-items: center; gap: 6px; color: var(--muted); }
-    .tt-dot   { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .tt-val   { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text); }
+    /* Advanced */
+    .adv-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px 10px;border-radius:var(--radius-sm);background:var(--surface2);border:1px solid var(--border);font-size:12px;color:var(--muted);width:100%;text-align:left;margin-top:10px;transition:background .1s;}
+    .adv-toggle:hover{background:var(--bg);}
+    .adv-toggle .chevron{margin-left:auto;transition:transform .2s;}
+    .adv-toggle.open .chevron{transform:rotate(180deg);}
+    .adv-content{display:none;margin-top:10px;}
+    .adv-content.visible{display:block;}
+    .adv-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px;}
+    @media(max-width:600px){.adv-stats{grid-template-columns:1fr;}}
+    .adv-stat{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;}
+    .adv-stat .label{font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;}
+    .adv-stat .value{font-family:var(--mono);font-size:18px;font-weight:800;color:var(--text);}
+    .adv-note{font-size:11px;color:var(--muted2);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+    .adv-note label{cursor:pointer;display:flex;align-items:center;gap:5px;}
 
-    /* ── Table ───────────────────────────────────────────────────────── */
-    .table-wrap { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); }
-    table { width: 100%; border-collapse: collapse; min-width: 440px; background: var(--surface); }
-    th {
-      position: sticky; top: 0;
-      background: var(--surface2);
-      padding: 9px 12px;
-      font-size: 11px; font-weight: 700;
-      letter-spacing: .06em; text-transform: uppercase;
-      color: var(--muted); text-align: right;
-      border-bottom: 1px solid var(--border2);
-      white-space: nowrap;
-    }
-    th:first-child { text-align: left; }
-    td {
-      padding: 9px 12px;
-      font-size: 13px; text-align: right;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap; color: var(--text);
-    }
-    td:first-child { text-align: left; font-family: var(--mono); font-size: 12px; color: var(--muted); }
-    td.num { font-family: var(--mono); }
-    td.status-ok   { color: var(--ok);     font-weight: 700; }
-    td.status-warn { color: var(--warn);   font-weight: 700; }
-    td.status-bad  { color: var(--muted2); }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: var(--surface2); }
-    th.adv, td.adv { display: none; }
-    body.show-adv th.adv, body.show-adv td.adv { display: table-cell; }
-
-    /* ── Advanced section ────────────────────────────────────────────── */
-    .adv-toggle {
-      display: flex; align-items: center; gap: 8px;
-      cursor: pointer;
-      padding: 8px 10px;
-      border-radius: var(--radius-sm);
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      font-size: 12px; color: var(--muted);
-      width: 100%; text-align: left;
-      margin-top: 10px;
-      transition: background .1s;
-    }
-    .adv-toggle:hover { background: var(--bg); }
-    .adv-toggle .chevron { margin-left: auto; transition: transform .2s; }
-    .adv-toggle.open .chevron { transform: rotate(180deg); }
-    .adv-content { display: none; margin-top: 10px; }
-    .adv-content.visible { display: block; }
-    .adv-stats {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px; margin-bottom: 10px;
-    }
-    @media (max-width: 600px) { .adv-stats { grid-template-columns: 1fr; } }
-    .adv-stat {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 12px;
-    }
-    .adv-stat .label {
-      font-size: 11px; color: var(--muted); margin-bottom: 4px;
-      font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
-    }
-    .adv-stat .value { font-family: var(--mono); font-size: 18px; font-weight: 800; color: var(--text); }
-    .adv-note { font-size: 11px; color: var(--muted2); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .adv-note label { cursor: pointer; display: flex; align-items: center; gap: 5px; }
-
-    /* ── Print ───────────────────────────────────────────────────────── */
-    @media print {
-      body { background: #fff; }
-      .controls, button, .adv-toggle { display: none !important; }
-      .panel, .kpi { box-shadow: none; border: 1px solid #ddd; }
-      th { background: #f5f5f5; }
+    @media print{
+      body{background:#fff;}
+      .controls,button,.adv-toggle,.series-toggles{display:none!important;}
+      .panel,.kpi{box-shadow:none;border:1px solid #ddd;}
+      th{background:#f5f5f5;}
     }
   </style>
 </head>
@@ -427,24 +231,41 @@
     </div>
   </div>
 
+  <!-- Chart panel -->
   <div class="panel">
     <div class="panel-header">
       <span class="panel-title">Atividade diária</span>
-      <div class="legend">
-        <div class="legend-item"><div class="legend-dot" style="background:#0ea5e9"></div>CRR5 Criados (Writes)</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#7c3aed"></div>CRR5 Carregados (Reads)</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#d97706;opacity:.8"></div>Comandos</div>
+      <!-- Series toggles -->
+      <div class="series-toggles">
+        <button class="stoggle active" id="togW"
+          style="--scolor:#0ea5e9;--scolor-bg:rgba(14,165,233,.08);--scolor-border:rgba(14,165,233,.35)">
+          <span class="sdot" style="background:#0ea5e9"></span>Writes
+        </button>
+        <button class="stoggle active" id="togR"
+          style="--scolor:#7c3aed;--scolor-bg:rgba(124,58,237,.08);--scolor-border:rgba(124,58,237,.35)">
+          <span class="sdot" style="background:#7c3aed"></span>Reads
+        </button>
+        <button class="stoggle active" id="togC"
+          style="--scolor:#d97706;--scolor-bg:rgba(217,119,6,.08);--scolor-border:rgba(217,119,6,.35)">
+          <span class="sdot" style="background:#d97706"></span>Comandos
+        </button>
       </div>
     </div>
+
     <div class="canvas-wrap">
-      <canvas id="chart"></canvas>
+      <canvas id="chart" aria-label="Gráfico de atividade diária do CRR5" role="img"></canvas>
     </div>
     <div id="chartEmpty" class="chart-empty" style="display:none">
       <div class="icon">📊</div>
       <p>Nenhum dado para exibir no período.</p>
     </div>
+    <!-- Shown when D-1 baseline could not be fetched -->
+    <div id="baselineNote" class="baseline-note">
+      ⚠️ Não foi possível encontrar o snapshot do dia anterior ao período — o primeiro dia exibe o total acumulado do mês, não o delta diário. Isso é esperado para o início dos dados.
+    </div>
   </div>
 
+  <!-- Table panel -->
   <div class="panel">
     <div class="panel-header">
       <span class="panel-title">Detalhamento diário</span>
@@ -488,110 +309,134 @@
     </div>
 
     <div class="panel-foot">
-      <span>Valores = diferença entre contadores mensais do Upstash entre dias consecutivos.</span>
+      <span>Valores = diferença entre contadores mensais consecutivos do Upstash.</span>
       <span id="coverageNote">—</span>
     </div>
   </div>
 
 </div>
 
+<!-- Tooltip -->
 <div id="tooltip">
   <div id="ttDate" class="tt-date">—</div>
-  <div class="tt-row"><div class="tt-label"><span class="tt-dot" style="background:#0ea5e9"></span>Writes</div><div id="ttW" class="tt-val">—</div></div>
-  <div class="tt-row"><div class="tt-label"><span class="tt-dot" style="background:#7c3aed"></span>Reads</div> <div id="ttR" class="tt-val">—</div></div>
-  <div class="tt-row"><div class="tt-label"><span class="tt-dot" style="background:#d97706"></span>Cmds</div>  <div id="ttC" class="tt-val">—</div></div>
+  <div id="ttRowW" class="tt-row"><div class="tt-label"><span class="tt-dot" style="background:#0ea5e9"></span>Writes</div><div id="ttW" class="tt-val">—</div></div>
+  <div id="ttRowR" class="tt-row"><div class="tt-label"><span class="tt-dot" style="background:#7c3aed"></span>Reads</div> <div id="ttR" class="tt-val">—</div></div>
+  <div id="ttRowC" class="tt-row"><div class="tt-label"><span class="tt-dot" style="background:#d97706"></span>Cmds</div>  <div id="ttC" class="tt-val">—</div></div>
 </div>
 
 <script>
 "use strict";
 
-/* ── Utilities ───────────────────────────────────────────────────────── */
-const $ = (id) => document.getElementById(id);
-const fmtInt   = (n) => (n == null || !Number.isFinite(+n)) ? "—" : new Intl.NumberFormat("pt-BR").format(Math.round(n));
-const fmtFloat = (n, d=2) => (n == null || !Number.isFinite(+n)) ? "—" : new Intl.NumberFormat("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d}).format(n);
-const fmtDelta = (n) => { if (n == null || !Number.isFinite(n)) return "—"; if (n < 0) return "↩ reset"; return fmtInt(n); };
-const bytesToMB = (b)  => (b  == null || !Number.isFinite(b))  ? null : b  / (1024*1024);
-const usToMs    = (us) => (us == null || !Number.isFinite(us)) ? null : us / 1000;
-const pad2 = (x) => String(x).padStart(2,"0");
+/* ── Utilities ───────────────────────────────────────────────────── */
+const $  = (id) => document.getElementById(id);
+const fmtInt   = (n) => (n==null||!Number.isFinite(+n))?"—":new Intl.NumberFormat("pt-BR").format(Math.round(n));
+const fmtFloat = (n,d=2)=>(n==null||!Number.isFinite(+n))?"—":new Intl.NumberFormat("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d}).format(n);
+const fmtDelta = (n)=>{if(n==null||!Number.isFinite(n))return"—";if(n<0)return"↩ reset";return fmtInt(n);};
+const bytesToMB = (b)  => (b ==null||!Number.isFinite(b)) ?null:b /1048576;
+const usToMs    = (us) => (us==null||!Number.isFinite(us))?null:us/1000;
+const pad2 = (x)=>String(x).padStart(2,"0");
 
-/* ── BUGFIX: safe hex→rgba (no broken string-replace chain) ──────────── */
-function hexToRgba(hex, alpha) {
-  const h = hex.replace("#","");
-  return `rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${alpha})`;
+/* Safe hex→rgba — avoids broken string-replace chain */
+function hexToRgba(hex,a){
+  const h=hex.replace("#","");
+  return`rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${a})`;
 }
 
-function ymdUTC(d) { return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())}`; }
-function parseYMD(s) { const [y,m,d]=s.split("-").map(Number); return new Date(Date.UTC(y,m-1,d)); }
-function addDays(d,n) { const x=new Date(d.getTime()); x.setUTCDate(x.getUTCDate()+n); return x; }
-function daysInMonthUTC(y,m) { return new Date(Date.UTC(y,m,0)).getUTCDate(); }
+function ymdUTC(d){return`${d.getUTCFullYear()}-${pad2(d.getUTCMonth()+1)}-${pad2(d.getUTCDate())}`;}
+function parseYMD(s){const[y,m,d]=s.split("-").map(Number);return new Date(Date.UTC(y,m-1,d));}
+function addDays(d,n){const x=new Date(d.getTime());x.setUTCDate(x.getUTCDate()+n);return x;}
+function daysInMonthUTC(y,m){return new Date(Date.UTC(y,m,0)).getUTCDate();}
 
-/* ── Badge ───────────────────────────────────────────────────────────── */
-function setBadge(state,text) {
+/* ── Badge ───────────────────────────────────────────────────────── */
+function setBadge(state,text){
   const el=$("healthBadge");
-  el.className = state==="ok"?"ok":state==="bad"?"bad":"";
+  el.className=state==="ok"?"ok":state==="bad"?"bad":"";
   el.textContent=text;
 }
 
-/* ── Fetch ───────────────────────────────────────────────────────────── */
-async function fetchJson(url) {
-  try {
-    const r = await fetch(url,{cache:"no-store"});
-    if (!r.ok) return {ok:false,status:r.status};
-    return {ok:true,json:await r.json()};
-  } catch(e) { return {ok:false,status:"network_error"}; }
+/* ── Fetch helpers ───────────────────────────────────────────────── */
+async function fetchJson(url){
+  try{
+    const r=await fetch(url,{cache:"no-store"});
+    if(!r.ok)return{ok:false,status:r.status};
+    return{ok:true,json:await r.json()};
+  }catch(e){return{ok:false,status:"network_error"};}
 }
 
-async function mapLimit(items,limit,mapper) {
-  const out=new Array(items.length); let i=0;
+async function mapLimit(items,limit,mapper){
+  const out=new Array(items.length);let i=0;
   await Promise.all(Array.from({length:Math.min(limit,items.length)},async()=>{
     while(i<items.length){const idx=i++;out[idx]=await mapper(items[idx],idx);}
   }));
   return out;
 }
 
-/* ── Data extraction ─────────────────────────────────────────────────── */
-function extract(snap) {
-  const raw = snap?.data || snap || {};
-  const up  = raw?.upstash    || {};
-  const cf  = raw?.cloudflare || {};
-  return {
-    fetched_at:        snap?.captured_at || snap?.fetched_at_utc || raw?.at || null,
+/* ── Data extraction ─────────────────────────────────────────────── */
+function extract(snap){
+  const raw=snap?.data||snap||{};
+  const up=raw?.upstash||{};
+  const cf=raw?.cloudflare||{};
+  return{
+    fetched_at:        snap?.captured_at||snap?.fetched_at_utc||raw?.at||null,
     up_ok:             up?.ok===true,
-    up_total_monthly:  up?.total_monthly_requests ?? null,
-    up_monthly_reads:  up?.monthly_reads          ?? null,
-    up_monthly_writes: up?.monthly_writes         ?? null,
-    up_storage_bytes:  up?.current_storage_bytes  ?? null,
-    up_billing_usd:    up?.monthly_billing_usd    ?? null,
+    up_total_monthly:  up?.total_monthly_requests??null,
+    up_monthly_reads:  up?.monthly_reads??null,
+    up_monthly_writes: up?.monthly_writes??null,
+    up_storage_bytes:  up?.current_storage_bytes??null,
     cf_ok:             cf?.ok===true,
-    cf_errors:         cf?.errors     ?? null,
-    cf_cpu_p99_us:     cf?.cpu_p99_us ?? null,
+    cf_errors:         cf?.errors??null,
+    cf_cpu_p99_us:     cf?.cpu_p99_us??null,
   };
 }
-const isValid = (x) => x!=null && x.up_ok===true;
+const isValid=(x)=>x!=null&&x.up_ok===true;
 
-/* ── Delta computation ───────────────────────────────────────────────── */
-function computeDeltas(rows) {
-  let last=null;
-  for (const r of rows) {
-    if (!r.present||!r.x){r.d_reads=null;r.d_writes=null;r.d_cmds=null;r.reset=false;continue;}
+/* ── Delta computation ───────────────────────────────────────────── */
+/*
+   CHART BUG ROOT CAUSE & FIX:
+   When the first snapshot in the period has no prior reference, the old code
+   set d_writes = monthly_writes (the full month accumulation, e.g. 7 000).
+   This caused the chart to spike high on day 1 then drop to real daily deltas.
+
+   Fix: loadRange now fetches the snapshot for D-1 (day before period start)
+   as a silent baseline. If found, all days in the period get real deltas.
+   If D-1 is not available, the first day is flagged is_first=true so the
+   chart can mark it clearly and the table shows a note.
+*/
+function computeDeltas(rows, baselineX){
+  // baselineX = extracted data from the day before the period, or null
+  let last = baselineX ? { x: baselineX } : null;
+
+  for(const r of rows){
+    if(!r.present||!r.x){
+      r.d_reads=null;r.d_writes=null;r.d_cmds=null;r.reset=false;r.is_first=false;
+      continue;
+    }
     const cR=r.x.up_monthly_reads, cW=r.x.up_monthly_writes, cC=r.x.up_total_monthly;
-    if (!last) {r.d_reads=cR;r.d_writes=cW;r.d_cmds=cC;r.reset=false;}
-    else {
+
+    if(!last){
+      // No baseline: flag as first day, show absolute as "accumulated"
+      r.d_reads=cR; r.d_writes=cW; r.d_cmds=cC;
+      r.reset=false; r.is_first=true;
+    } else {
       const dr=(cR!=null&&last.x.up_monthly_reads !=null)?cR-last.x.up_monthly_reads :null;
       const dw=(cW!=null&&last.x.up_monthly_writes!=null)?cW-last.x.up_monthly_writes:null;
       const dc=(cC!=null&&last.x.up_total_monthly !=null)?cC-last.x.up_total_monthly :null;
       r.reset=(dr!=null&&dr<0)||(dw!=null&&dw<0);
+      // If reset (month rollover), use absolute value for that day
       r.d_reads =(dr!=null&&dr>=0)?dr:cR;
       r.d_writes=(dw!=null&&dw>=0)?dw:cW;
       r.d_cmds  =(dc!=null&&dc>=0)?dc:cC;
+      r.is_first=false;
     }
     last=r;
   }
 }
 
-/* ── KPIs ────────────────────────────────────────────────────────────── */
-function renderKPIs(rows,label) {
-  const pres=rows.filter(r=>r.present&&r.x&&isValid(r.x)), n=pres.length;
+/* ── KPIs ────────────────────────────────────────────────────────── */
+function renderKPIs(rows,label){
+  // Exclude is_first days from KPI totals (they're accumulated, not daily)
+  const pres=rows.filter(r=>r.present&&r.x&&isValid(r.x)&&!r.is_first);
+  const n=pres.length;
   const tW=pres.reduce((a,r)=>a+Math.max(0,r.d_writes||0),0);
   const tR=pres.reduce((a,r)=>a+Math.max(0,r.d_reads ||0),0);
   const tC=pres.reduce((a,r)=>a+Math.max(0,r.d_cmds  ||0),0);
@@ -600,176 +445,225 @@ function renderKPIs(rows,label) {
   const smb=bytesToMB(last?.x?.up_storage_bytes??null);
   const p99=n?pres.reduce((a,r)=>a+(usToMs(r.x?.cf_cpu_p99_us)||0),0)/n:null;
 
-  $("kpiWrites").textContent=fmtInt(tW); $("kpiReads").textContent=fmtInt(tR); $("kpiCmds").textContent=fmtInt(tC);
+  $("kpiWrites").textContent=fmtInt(tW);
+  $("kpiReads").textContent =fmtInt(tR);
+  $("kpiCmds").textContent  =fmtInt(tC);
   $("kpiWritesSub").textContent=n?`${fmtInt(Math.round(tW/n))} / dia`:"sem dados";
   $("kpiReadsSub").textContent =n?`${fmtInt(Math.round(tR/n))} / dia`:"sem dados";
   $("kpiCmdsSub").textContent  =n?`${fmtInt(Math.round(tC/n))} / dia`:"sem dados";
 
-  const cov=rows.length?Math.round((n/rows.length)*100):0;
-  $("kpiStatus").textContent=`${n}/${rows.length}`;
+  const allPres=rows.filter(r=>r.present&&r.x&&isValid(r.x));
+  const cov=rows.length?Math.round((allPres.length/rows.length)*100):0;
+  $("kpiStatus").textContent=`${allPres.length}/${rows.length}`;
   $("kpiStatusSub").textContent=`${cov}% cobertura`;
   $("kpiStatus").className="kpi-value "+(cov>=80?"ok":cov>=50?"warn":"bad");
   $("kpiStatus").closest(".kpi").style.setProperty("--kpi-status-color",cov>=80?"var(--teal)":cov>=50?"var(--warn)":"var(--bad)");
 
   $("periodLabel").textContent=label;
-  $("coverageNote").textContent=`${n} de ${rows.length} dias com snapshot (${cov}%)`;
+  $("coverageNote").textContent=`${allPres.length} de ${rows.length} dias com snapshot (${cov}%)`;
   $("advStorage").textContent=smb!=null?`${fmtFloat(smb,2)} MB`:"—";
   $("advErrors").textContent=fmtInt(tE);
   $("advCpu").textContent=p99!=null?`${fmtFloat(p99,2)} ms`:"—";
 
-  if (!n)           setBadge("bad","sem dados");
-  else if (tE>0)    setBadge("warn",`atenção — ${fmtInt(tE)} errors`);
-  else              setBadge("ok",`ok — ${cov}% cobertura`);
+  if(!allPres.length) setBadge("bad","sem dados");
+  else if(tE>0)       setBadge("warn",`atenção — ${fmtInt(tE)} errors`);
+  else                setBadge("ok",`ok — ${cov}% cobertura`);
 }
 
-/* ── Table ───────────────────────────────────────────────────────────── */
-function renderTable(rows) {
+/* ── Table ───────────────────────────────────────────────────────── */
+function renderTable(rows){
   const tb=$("tbody"); tb.innerHTML="";
-  if (!rows.length){tb.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted2)">Nenhum dado.</td></tr>`;return;}
-  for (const r of rows) {
-    let st="—",sc="";
-    if (!r.present)        {st="Sem snapshot";sc="status-bad";}
-    else if (!isValid(r.x)){st="Parcial";     sc="status-warn";}
-    else if (r.reset)      {st="↩ Reset";     sc="status-warn";}
+  if(!rows.length){tb.innerHTML=`<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted2)">Nenhum dado.</td></tr>`;return;}
+  for(const r of rows){
+    let st,sc;
+    if(!r.present)         {st="Sem snapshot";sc="status-bad";}
+    else if(!isValid(r.x)) {st="Parcial";     sc="status-warn";}
+    else if(r.reset)       {st="↩ Reset";     sc="status-warn";}
+    else if(r.is_first)    {st="Acumulado";   sc="status-warn";} // first day without baseline
     else                   {st="OK";          sc="status-ok";}
-    const smb  =bytesToMB(r.x?.up_storage_bytes??null);
-    const cpu99=usToMs(r.x?.cf_cpu_p99_us??null);
+
+    const smb=bytesToMB(r.x?.up_storage_bytes??null);
+    const cpu=usToMs(r.x?.cf_cpu_p99_us??null);
+
     const tr=document.createElement("tr");
+    // If is_first, mark numeric cells with dim style
+    const numClass=r.is_first?`num first-day`:`num`;
     tr.innerHTML=`
       <td>${r.ymd}</td>
-      <td class="num">${fmtDelta(r.d_writes)}</td>
-      <td class="num">${fmtDelta(r.d_reads)}</td>
-      <td class="num">${fmtDelta(r.d_cmds)}</td>
-      <td class="adv num">${smb  !=null?fmtFloat(smb,  2):"—"}</td>
-      <td class="adv num">${fmtInt(r.x?.cf_errors??null)}</td>
-      <td class="adv num">${cpu99!=null?fmtFloat(cpu99,2):"—"}</td>
+      <td class="${numClass}">${fmtDelta(r.d_writes)}</td>
+      <td class="${numClass}">${fmtDelta(r.d_reads)}</td>
+      <td class="${numClass}">${fmtDelta(r.d_cmds)}</td>
+      <td class="adv ${numClass}">${smb!=null?fmtFloat(smb,2):"—"}</td>
+      <td class="adv ${numClass}">${fmtInt(r.x?.cf_errors??null)}</td>
+      <td class="adv ${numClass}">${cpu!=null?fmtFloat(cpu,2):"—"}</td>
       <td class="${sc}">${st}</td>`;
     tb.appendChild(tr);
   }
 }
 
-/* ── Chart ───────────────────────────────────────────────────────────── */
-const chartState={rows:[],pts:[]};
-const C_BLUE="#0ea5e9", C_PURP="#7c3aed", C_YELL="#d97706";
-const C_GRID="rgba(0,0,0,.06)", C_AXIS="rgba(0,0,0,.35)", C_BG="#f8f9fc";
+/* ── Chart ───────────────────────────────────────────────────────── */
+const chartState={rows:[],pts:[],showW:true,showR:true,showC:true};
+const C_BLUE="#0ea5e9",C_PURP="#7c3aed",C_YELL="#d97706";
+const C_GRID="rgba(0,0,0,.055)",C_AXIS="rgba(0,0,0,.32)",C_BG="#f8f9fc";
 
-function drawChart(rows) {
+function drawChart(rows){
   chartState.rows=rows; chartState.pts=[];
-  const c=$("chart"), ctx=c.getContext("2d"), dpr=window.devicePixelRatio||1;
+
+  const c=$("chart"),ctx=c.getContext("2d"),dpr=window.devicePixelRatio||1;
   const rect=c.getBoundingClientRect();
-  const cssW=Math.max(Math.floor(rect.width),300), cssH=Math.max(Math.floor(rect.height),80);
-  if (c.width!==Math.floor(cssW*dpr)||c.height!==Math.floor(cssH*dpr)){c.width=Math.floor(cssW*dpr);c.height=Math.floor(cssH*dpr);}
-  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,cssW,cssH);
+  const cssW=Math.max(Math.floor(rect.width),300),cssH=Math.max(Math.floor(rect.height),80);
+  if(c.width!==Math.floor(cssW*dpr)||c.height!==Math.floor(cssH*dpr)){
+    c.width=Math.floor(cssW*dpr);c.height=Math.floor(cssH*dpr);
+  }
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,cssW,cssH);
 
   const padL=50,padR=50,padT=22,padB=34;
-  const W=cssW-padL-padR, H=cssH-padT-padB;
-  if (W<=10||H<=10) return;
-
-  const pres=rows.filter(r=>r.present&&r.x);
-  if (!pres.length){$("chartEmpty").style.display="";c.style.display="none";return;}
-  $("chartEmpty").style.display="none"; c.style.display="block";
+  const W=cssW-padL-padR,H=cssH-padT-padB;
+  if(W<=10||H<=10)return;
 
   const n=rows.length;
-  const writes=rows.map(r=>Number.isFinite(r.d_writes)&&r.d_writes>=0?r.d_writes:null);
-  const reads =rows.map(r=>Number.isFinite(r.d_reads) &&r.d_reads >=0?r.d_reads :null);
-  const cmds  =rows.map(r=>Number.isFinite(r.d_cmds)  &&r.d_cmds  >=0?r.d_cmds  :null);
-  const allV=[...writes,...reads,...cmds].filter(v=>v!=null);
-  const niceMax=computeNiceMax(Math.max(1,...allV));
+
+  // Build series — exclude is_first days from chart (they skew scale)
+  // is_first points are rendered as open circles, not connected to the spline
+  const writes=rows.map(r=>(r.present&&r.x&&Number.isFinite(r.d_writes)&&r.d_writes>=0&&!r.is_first)?r.d_writes:null);
+  const reads =rows.map(r=>(r.present&&r.x&&Number.isFinite(r.d_reads) &&r.d_reads >=0&&!r.is_first)?r.d_reads :null);
+  const cmds  =rows.map(r=>(r.present&&r.x&&Number.isFinite(r.d_cmds)  &&r.d_cmds  >=0&&!r.is_first)?r.d_cmds  :null);
+
+  // First-day points (rendered separately as open circles with note)
+  const firstW=rows.map(r=>(r.is_first&&Number.isFinite(r.d_writes))?r.d_writes:null);
+  const firstR=rows.map(r=>(r.is_first&&Number.isFinite(r.d_reads)) ?r.d_reads :null);
+
+  // Check if there's any real data (non-first)
+  const hasReal=[...writes,...reads,...cmds].some(v=>v!=null);
+  const hasAny =[...writes,...reads,...cmds,...firstW,...firstR].some(v=>v!=null);
+
+  if(!hasAny){$("chartEmpty").style.display="";c.style.display="none";return;}
+  $("chartEmpty").style.display="none";c.style.display="block";
+
+  // Compute scale using active series only
+  const activeVals=[];
+  if(chartState.showW)[...writes,...firstW].filter(v=>v!=null).forEach(v=>activeVals.push(v));
+  if(chartState.showR)[...reads, ...firstR].filter(v=>v!=null).forEach(v=>activeVals.push(v));
+  if(chartState.showC)cmds.filter(v=>v!=null).forEach(v=>activeVals.push(v));
+  const niceMax=computeNiceMax(Math.max(1,...activeVals));
 
   const xAt=(i)=>padL+(n===1?W/2:(i/(n-1))*W);
   const yAt=(v)=>padT+(1-(v/niceMax))*H;
   const yBot=padT+H;
 
-  // Grid
-  ctx.font="11px ui-monospace,monospace"; ctx.textBaseline="middle";
-  for (let g=0;g<=4;g++){
+  // Y grid
+  ctx.font="11px ui-monospace,monospace";ctx.textBaseline="middle";
+  for(let g=0;g<=4;g++){
     const y=padT+(g/4)*H;
-    ctx.strokeStyle=C_GRID; ctx.lineWidth=1;
+    ctx.strokeStyle=C_GRID;ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(padL,y);ctx.lineTo(padL+W,y);ctx.stroke();
-    ctx.fillStyle=C_AXIS; ctx.fillText(fmtAxisVal(Math.round(niceMax*(1-g/4))),6,y);
+    ctx.fillStyle=C_AXIS;ctx.fillText(fmtAxisVal(Math.round(niceMax*(1-g/4))),6,y);
   }
-  // X labels
-  ctx.fillStyle=C_AXIS; ctx.textBaseline="alphabetic";
-  for (const i of [...new Set([0,Math.floor((n-1)/2),n-1])].filter(i=>i>=0&&i<n)){
-    const lbl=rows[i].ymd?.slice(8)||""; const x=xAt(i);
-    ctx.fillText(lbl,x-ctx.measureText(lbl).width/2,padT+H+22);
+
+  // X labels — only show labels for days that have data (avoid cluttered "01"/"30")
+  ctx.fillStyle=C_AXIS;ctx.textBaseline="alphabetic";
+  const dataIdxs=rows.map((r,i)=>(r.present&&r.x)?i:-1).filter(i=>i>=0);
+  if(dataIdxs.length){
+    // Show: first data day, middle, last data day
+    const candidates=[...new Set([dataIdxs[0],dataIdxs[Math.floor((dataIdxs.length-1)/2)],dataIdxs[dataIdxs.length-1]])];
+    for(const i of candidates){
+      const lbl=rows[i].ymd?.slice(8)||"";
+      const x=xAt(i);
+      ctx.fillText(lbl,x-ctx.measureText(lbl).width/2,padT+H+22);
+    }
   }
 
   function buildPts(series){
     const pts=[];
-    for (let i=0;i<n;i++){const v=series[i];if(v==null)continue;pts.push({x:xAt(i),y:yAt(v),v,i,row:rows[i]});}
+    for(let i=0;i<n;i++){const v=series[i];if(v==null)continue;pts.push({x:xAt(i),y:yAt(v),v,i,row:rows[i]});}
     return pts;
   }
 
-  /* ── BUGFIX: uses hexToRgba() — no broken color string ── */
   function drawLine(pts,color,dashed=false){
-    if (!pts.length) return;
+    if(!pts.length)return;
     // Area fill
-    if (!dashed){
+    if(!dashed){
       const grad=ctx.createLinearGradient(0,padT,0,yBot);
-      grad.addColorStop(0,  hexToRgba(color,0.14));
-      grad.addColorStop(0.7,hexToRgba(color,0.04));
+      grad.addColorStop(0,  hexToRgba(color,0.13));
+      grad.addColorStop(0.7,hexToRgba(color,0.03));
       grad.addColorStop(1,  hexToRgba(color,0.00));
-      ctx.save(); ctx.beginPath();
-      ctx.moveTo(pts[0].x,yBot); ctx.lineTo(pts[0].x,pts[0].y);
-      for (let i=1;i<pts.length-1;i++){
+      ctx.save();ctx.beginPath();
+      ctx.moveTo(pts[0].x,yBot);ctx.lineTo(pts[0].x,pts[0].y);
+      for(let i=1;i<pts.length-1;i++){
         const xc=(pts[i].x+pts[i+1].x)/2,yc=(pts[i].y+pts[i+1].y)/2;
         ctx.quadraticCurveTo(pts[i].x,pts[i].y,xc,yc);
       }
-      if (pts.length>1){const lt=pts[pts.length-1],pv=pts[pts.length-2];ctx.quadraticCurveTo(pv.x,pv.y,lt.x,lt.y);}
-      ctx.lineTo(pts[pts.length-1].x,yBot); ctx.closePath();
-      ctx.fillStyle=grad; ctx.fill(); ctx.restore();
+      if(pts.length>1){const lt=pts[pts.length-1],pv=pts[pts.length-2];ctx.quadraticCurveTo(pv.x,pv.y,lt.x,lt.y);}
+      ctx.lineTo(pts[pts.length-1].x,yBot);ctx.closePath();
+      ctx.fillStyle=grad;ctx.fill();ctx.restore();
     }
     // Spline
-    ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=2; ctx.lineJoin="round"; ctx.lineCap="round";
-    if (dashed) ctx.setLineDash([6,5]);
-    ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y);
-    if (pts.length===1){ctx.arc(pts[0].x,pts[0].y,3,0,Math.PI*2);}
-    else {
-      for (let i=1;i<pts.length-1;i++){const xc=(pts[i].x+pts[i+1].x)/2,yc=(pts[i].y+pts[i+1].y)/2;ctx.quadraticCurveTo(pts[i].x,pts[i].y,xc,yc);}
+    ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.lineJoin="round";ctx.lineCap="round";
+    if(dashed)ctx.setLineDash([6,5]);
+    ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+    if(pts.length===1){ctx.arc(pts[0].x,pts[0].y,3,0,Math.PI*2);}
+    else{
+      for(let i=1;i<pts.length-1;i++){const xc=(pts[i].x+pts[i+1].x)/2,yc=(pts[i].y+pts[i+1].y)/2;ctx.quadraticCurveTo(pts[i].x,pts[i].y,xc,yc);}
       const lt=pts[pts.length-1],pv=pts[pts.length-2];ctx.quadraticCurveTo(pv.x,pv.y,lt.x,lt.y);
     }
-    ctx.stroke(); ctx.restore();
-    // Dot
+    ctx.stroke();ctx.restore();
+    // End-point dot
     const tail=pts[pts.length-1];
-    ctx.save(); ctx.fillStyle=color; ctx.strokeStyle=C_BG; ctx.lineWidth=2;
-    ctx.beginPath();ctx.arc(tail.x,tail.y,4,0,Math.PI*2);ctx.fill();ctx.stroke(); ctx.restore();
+    ctx.save();ctx.fillStyle=color;ctx.strokeStyle=C_BG;ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(tail.x,tail.y,4,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
   }
 
-  /* ── BUGFIX: uses hexToRgba() instead of broken "+ cc" ── */
-  function labelLast(pts,label,color){
-    if (!pts.length) return;
-    const p=pts[pts.length-1], txt=`${label} ${fmtInt(p.v)}`;
-    ctx.save(); ctx.fillStyle=hexToRgba(color,0.85);
-    ctx.font="11px ui-monospace,monospace"; ctx.textBaseline="middle";
+  // Label for last point — stagger Y to avoid overlap
+  function labelLast(pts,label,color,yOffset=0){
+    if(!pts.length)return;
+    const p=pts[pts.length-1];
+    const txt=`${label} ${fmtInt(p.v)}`;
+    ctx.save();ctx.fillStyle=hexToRgba(color,0.9);
+    ctx.font="11px ui-monospace,monospace";ctx.textBaseline="middle";
     const tw=ctx.measureText(txt).width;
-    ctx.fillText(txt,Math.min(p.x+8,padL+W-tw-2),Math.max(padT+6,Math.min(p.y-12,padT+H-6)));
-    ctx.restore();
+    const x=Math.min(p.x+8,padL+W-tw-2);
+    const y=Math.max(padT+6,Math.min(p.y-10+yOffset,padT+H-6));
+    ctx.fillText(txt,x,y);ctx.restore();
   }
 
-  const ptsW=buildPts(writes), ptsR=buildPts(reads), ptsC=buildPts(cmds);
-  drawLine(ptsW,C_BLUE); drawLine(ptsR,C_PURP); if (ptsC.length) drawLine(ptsC,C_YELL,true);
-  labelLast(ptsW,"Writes",C_BLUE); labelLast(ptsR,"Reads",C_PURP); if (ptsC.length) labelLast(ptsC,"Cmds",C_YELL);
+  const ptsW=buildPts(writes),ptsR=buildPts(reads),ptsC=buildPts(cmds);
 
-  for (const p of ptsW) chartState.pts.push({...p,series:"W"});
-  for (const p of ptsR) chartState.pts.push({...p,series:"R"});
-  for (const p of ptsC) chartState.pts.push({...p,series:"C"});
+  if(chartState.showW)drawLine(ptsW,C_BLUE);
+  if(chartState.showR)drawLine(ptsR,C_PURP);
+  if(chartState.showC&&ptsC.length)drawLine(ptsC,C_YELL,true);
+
+  // Staggered labels to prevent overlap
+  const activeLabels=[];
+  if(chartState.showW&&ptsW.length)activeLabels.push({pts:ptsW,label:"W",color:C_BLUE});
+  if(chartState.showR&&ptsR.length)activeLabels.push({pts:ptsR,label:"R",color:C_PURP});
+  if(chartState.showC&&ptsC.length)activeLabels.push({pts:ptsC,label:"C",color:C_YELL});
+  const offsets=activeLabels.length===1?[0]:activeLabels.length===2?[-10,10]:[-14,0,14];
+  activeLabels.forEach((s,i)=>labelLast(s.pts,s.label,s.color,offsets[i]||0));
+
+  // Store points for tooltip
+  for(const p of ptsW)chartState.pts.push({...p,series:"W"});
+  for(const p of ptsR)chartState.pts.push({...p,series:"R"});
+  for(const p of ptsC)chartState.pts.push({...p,series:"C"});
 }
 
 function fmtAxisVal(n){if(n>=1e6)return(n/1e6).toFixed(1)+"M";if(n>=1e3)return(n/1e3).toFixed(0)+"k";return String(n);}
-function computeNiceMax(v){if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v)));const f=v/p;const m=f<=1?1:f<=2?2:f<=5?5:10;return m*p;}
+function computeNiceMax(v){if(v<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(v)));const f=v/p;return(f<=1?1:f<=2?2:f<=5?5:10)*p;}
 
-/* ── Tooltip ─────────────────────────────────────────────────────────── */
+/* ── Tooltip ─────────────────────────────────────────────────────── */
 $("chart").addEventListener("mousemove",(ev)=>{
-  const rows=chartState.rows; if (!rows.length){$("tooltip").classList.remove("visible");return;}
+  const rows=chartState.rows;if(!rows.length){$("tooltip").classList.remove("visible");return;}
   const rect=$("chart").getBoundingClientRect();
-  const n=rows.length, W=Math.max(rect.width,300)-100;
+  const n=rows.length,W=Math.max(rect.width,300)-100;
   const idx=Math.round(Math.max(0,Math.min(1,(ev.clientX-rect.left-50)/W))*(n-1));
-  const row=rows[idx]; if (!row){$("tooltip").classList.remove("visible");return;}
+  const row=rows[idx];if(!row){$("tooltip").classList.remove("visible");return;}
   $("ttDate").textContent=row.ymd||"—";
   $("ttW").textContent=fmtDelta(row.d_writes);
   $("ttR").textContent=fmtDelta(row.d_reads);
   $("ttC").textContent=fmtDelta(row.d_cmds);
+  // Hide tooltip rows for inactive series
+  $("ttRowW").className="tt-row"+(chartState.showW?"":" hidden");
+  $("ttRowR").className="tt-row"+(chartState.showR?"":" hidden");
+  $("ttRowC").className="tt-row"+(chartState.showC?"":" hidden");
   const x=Math.min(ev.clientX+14,window.innerWidth -178);
   const y=Math.min(ev.clientY+14,window.innerHeight-120);
   $("tooltip").style.transform=`translate(${x}px,${y}px)`;
@@ -778,30 +672,56 @@ $("chart").addEventListener("mousemove",(ev)=>{
 $("chart").addEventListener("mouseleave",()=>$("tooltip").classList.remove("visible"));
 window.addEventListener("resize",()=>{if(chartState.rows.length)drawChart(chartState.rows);});
 
-/* ── CSV ─────────────────────────────────────────────────────────────── */
+/* ── Series toggles ──────────────────────────────────────────────── */
+function setupToggle(btnId,stateKey){
+  $(`tog${btnId}`).addEventListener("click",()=>{
+    chartState[`show${btnId}`]=!chartState[`show${btnId}`];
+    $(`tog${btnId}`).className="stoggle "+(chartState[`show${btnId}`]?"active":"inactive");
+    if(chartState.rows.length)drawChart(chartState.rows);
+  });
+}
+setupToggle("W","showW");
+setupToggle("R","showR");
+setupToggle("C","showC");
+
+/* ── CSV ─────────────────────────────────────────────────────────── */
 function buildCSV(rows){
-  const h=["date","writes_day","reads_day","commands_day","storage_mb","cf_errors","cpu_p99_ms","snapshot_ok"];
+  const h=["date","writes_day","reads_day","commands_day","storage_mb","cf_errors","cpu_p99_ms","snapshot_ok","note"];
   const lines=[h.join(",")];
-  for (const r of rows){
-    const smb=bytesToMB(r.x?.up_storage_bytes??null), cpu99=usToMs(r.x?.cf_cpu_p99_us??null);
-    lines.push([r.ymd,r.d_writes??"",r.d_reads??"",r.d_cmds??"",smb!=null?smb.toFixed(4):"",r.x?.cf_errors??"",cpu99!=null?cpu99.toFixed(3):"",r.present?"1":"0"].join(","));
+  for(const r of rows){
+    const smb=bytesToMB(r.x?.up_storage_bytes??null),cpu=usToMs(r.x?.cf_cpu_p99_us??null);
+    lines.push([r.ymd,r.d_writes??"",r.d_reads??"",r.d_cmds??"",
+      smb!=null?smb.toFixed(4):"",r.x?.cf_errors??"",cpu!=null?cpu.toFixed(3):"",
+      r.present?"1":"0",r.is_first?"acumulado":""
+    ].join(","));
   }
   return lines.join("\n");
 }
 function download(name,content,mime="text/plain"){
-  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([content],{type:mime})); a.download=name;
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([content],{type:mime}));a.download=name;
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 }
 
-/* ── Load ────────────────────────────────────────────────────────────── */
-async function loadRange(s,e){
+/* ── Load orchestration ──────────────────────────────────────────── */
+async function loadRange(startUTC,endUTC){
   const base=($("basePath").value||"./data").replace(/\/+$/,"");
-  const days=[]; let cur=new Date(s.getTime());
-  while(cur<=e){days.push(ymdUTC(cur));cur=addDays(cur,1);}
-  if (!days.length) return;
+  const days=[];let cur=new Date(startUTC.getTime());
+  while(cur<=endUTC){days.push(ymdUTC(cur));cur=addDays(cur,1);}
+  if(!days.length)return;
 
-  $("btnLoad").disabled=true; $("btnLoad").textContent="Carregando…";
+  $("btnLoad").disabled=true;$("btnLoad").textContent="Carregando…";
   setBadge("warn","carregando…");
+
+  // ── CHART BUG FIX: fetch D-1 baseline silently ────────────────────
+  // This gives the first day in the period a real delta instead of
+  // the accumulated monthly counter which made the chart spike/drop.
+  const baselineYmd=ymdUTC(addDays(startUTC,-1));
+  const baselineRes=await fetchJson(`${base}/${baselineYmd}.json`);
+  const baselineX=(baselineRes.ok&&baselineRes.json)?extract(baselineRes.json):null;
+  const hasBaseline=baselineX!=null&&isValid(baselineX);
+
+  // Show or hide the baseline warning note
+  $("baselineNote").classList.toggle("visible",!hasBaseline);
 
   const results=await mapLimit(days,6,async(ymd)=>{
     const r=await fetchJson(`${base}/${ymd}.json`);
@@ -809,28 +729,31 @@ async function loadRange(s,e){
   });
 
   const rows=results
-    .map(r=>({ymd:r.ymd,date:parseYMD(r.ymd),present:r.present,x:r.present?r.x:null,d_reads:null,d_writes:null,d_cmds:null}))
+    .map(r=>({ymd:r.ymd,date:parseYMD(r.ymd),present:r.present,x:r.present?r.x:null,d_reads:null,d_writes:null,d_cmds:null,is_first:false,reset:false}))
     .sort((a,b)=>a.date-b.date);
 
-  computeDeltas(rows);
+  computeDeltas(rows,baselineX);
+
   const label=`${rows[0].ymd} → ${rows[rows.length-1].ymd}`;
-  renderKPIs(rows,label); renderTable(rows); drawChart(rows);
+  renderKPIs(rows,label);
+  renderTable(rows);
+  drawChart(rows);
 
   const csv=buildCSV(rows);
-  $("btnCSV").disabled=false; $("btnPrint").disabled=false;
+  $("btnCSV").disabled=false;$("btnPrint").disabled=false;
   $("btnCSV").onclick=()=>download(`crr5_${rows[0].ymd}_${rows[rows.length-1].ymd}.csv`,csv,"text/csv");
   $("btnPrint").onclick=()=>window.print();
-  $("btnLoad").disabled=false; $("btnLoad").textContent="Carregar";
+  $("btnLoad").disabled=false;$("btnLoad").textContent="Carregar";
 }
 
-/* ── UI wiring ───────────────────────────────────────────────────────── */
+/* ── UI wiring ───────────────────────────────────────────────────── */
 function syncMode(){
   const m=$("mode").value;
   $("monthCtrl").style.display=m==="month"?"":"none";
   $("startCtrl").style.display=m==="range"?"":"none";
   $("endCtrl").style.display  =m==="range"?"":"none";
 }
-$("mode").addEventListener("change",syncMode); syncMode();
+$("mode").addEventListener("change",syncMode);syncMode();
 
 const now=new Date();
 $("month").value=`${now.getUTCFullYear()}-${pad2(now.getUTCMonth()+1)}`;
@@ -839,33 +762,40 @@ $("end").value  =ymdUTC(now);
 
 let _loading=false;
 async function triggerLoad(){
-  if (_loading) return; _loading=true;
-  try {
+  if(_loading)return;_loading=true;
+  try{
     const mode=$("mode").value;
-    if (mode==="month"){
-      const val=$("month").value; if (!val) return;
-      const [y,m]=val.split("-").map(Number);
+    if(mode==="month"){
+      const val=$("month").value;if(!val)return;
+      const[y,m]=val.split("-").map(Number);
       await loadRange(new Date(Date.UTC(y,m-1,1)),new Date(Date.UTC(y,m-1,daysInMonthUTC(y,m))));
-    } else {
-      const s=$("start").value,e=$("end").value; if (!s||!e) return;
+    }else{
+      const s=$("start").value,e=$("end").value;if(!s||!e)return;
       await loadRange(parseYMD(s),parseYMD(e));
     }
-  } catch(e){
+  }catch(e){
     console.error("triggerLoad:",e);
-    if ($("tbody").querySelectorAll("tr").length<=1) setBadge("bad","erro ao carregar");
-  } finally {
-    _loading=false; $("btnLoad").disabled=false; $("btnLoad").textContent="Carregar";
+    if($("tbody").querySelectorAll("tr").length<=1)setBadge("bad","erro ao carregar");
+  }finally{
+    _loading=false;$("btnLoad").disabled=false;$("btnLoad").textContent="Carregar";
   }
 }
 $("btnLoad").addEventListener("click",triggerLoad);
 
+// Advanced section — persist open/closed state
 $("advToggle").addEventListener("click",()=>{
   const open=$("advContent").classList.toggle("visible");
   $("advToggle").classList.toggle("open",open);
+  localStorage.setItem("crr5_adv_open",open?"1":"0");
 });
+if(localStorage.getItem("crr5_adv_open")==="1"){
+  $("advContent").classList.add("visible");
+  $("advToggle").classList.add("open");
+}
 
-const tac=$("toggleAdvCols"), sv=localStorage.getItem("crr5_adv_cols")==="1";
-tac.checked=sv; document.body.classList.toggle("show-adv",sv);
+// Advanced columns in table
+const tac=$("toggleAdvCols"),sv=localStorage.getItem("crr5_adv_cols")==="1";
+tac.checked=sv;document.body.classList.toggle("show-adv",sv);
 tac.addEventListener("change",()=>{
   document.body.classList.toggle("show-adv",tac.checked);
   localStorage.setItem("crr5_adv_cols",tac.checked?"1":"0");
