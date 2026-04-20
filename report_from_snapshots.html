@@ -586,9 +586,8 @@ body.show-advanced th.adv, body.show-advanced td.adv { display: table-cell; }
     const dpr = window.devicePixelRatio || 1;
 
     const rect = c.getBoundingClientRect();
-    const cssW = Math.max(1, Math.floor(rect.width));
-    const cssH = Math.max(1, Math.floor(rect.height));
-    if (!cssW || !cssH) return;
+    const cssW = Math.max(Math.floor(rect.width), 200);
+    const cssH = Math.max(Math.floor(rect.height), 80);
 
     const targetW = Math.floor(cssW * dpr);
     const targetH = Math.floor(cssH * dpr);
@@ -768,29 +767,43 @@ body.show-advanced th.adv, body.show-advanced td.adv { display: table-cell; }
     $("btnLoad").textContent = "Carregar";
   }
 
-  $("btnLoad").addEventListener("click", async ()=>{
-    const mode = $("mode").value;
-    if (mode==="month"){
-      const val = $("month").value;
-      if (!val) return;
-      const [y,m] = val.split("-").map(Number);
-      const n = daysInMonthUTC(y,m);
-      await loadRange(new Date(Date.UTC(y,m-1,1)), new Date(Date.UTC(y,m-1,n)));
-      return;
+  let _loading = false;
+
+  async function triggerLoad(){
+    if (_loading) return;
+    _loading = true;
+    try {
+      const mode = $("mode").value;
+          if (mode==="month"){
+            const val = $("month").value;
+            if (!val) return;
+            const [y,m] = val.split("-").map(Number);
+            const n = daysInMonthUTC(y,m);
+            await loadRange(new Date(Date.UTC(y,m-1,1)), new Date(Date.UTC(y,m-1,n)));
+            return;
+          }
+          if (mode==="week"){
+            const w = $("weekStart").value;
+            if (!w) return;
+            const start = parseYMD(w);
+            await loadRange(start, addDays(start,6));
+            return;
+          }
+          if (mode==="range"){
+            const s = $("start").value, e = $("end").value;
+            if (!s || !e) return;
+            await loadRange(parseYMD(s), parseYMD(e));
+          }
+    } catch (e) {
+      console.error(e);
+      setBadge("bad", "erro ao carregar");
+    } finally {
+      _loading = false;
+      try{ $("btnLoad").disabled = false; $("btnLoad").textContent = "Carregar"; }catch(e){}
     }
-    if (mode==="week"){
-      const w = $("weekStart").value;
-      if (!w) return;
-      const start = parseYMD(w);
-      await loadRange(start, addDays(start,6));
-      return;
-    }
-    if (mode==="range"){
-      const s = $("start").value, e = $("end").value;
-      if (!s || !e) return;
-      await loadRange(parseYMD(s), parseYMD(e));
-    }
-  });
+  }
+
+  $("btnLoad").addEventListener("click", triggerLoad);
   // UI: advanced columns toggle (safe, optional)
   const adv = $("toggleAdvanced");
   if (adv) {
