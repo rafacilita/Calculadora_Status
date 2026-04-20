@@ -3,241 +3,449 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Status CRR5 — Relatório por Snapshots</title>
+  <title>CRR5 — Relatório de Uso</title>
   <style>
-    :root{
-      --bg:#0b1220;
-      --panel:#0f1b2f;
-      --panel2:#0c1628;
-      --text:#e7eefc;
-      --muted:#9db0d0;
-      --ok:#2dd4bf;
-      --warn:#fbbf24;
-      --bad:#fb7185;
-      --line:#203553;
-      --chip:#152744;
-      --shadow: 0 12px 30px rgba(0,0,0,.35);
-      --radius:18px;
+    /* ── Tokens ─────────────────────────────────────────────────────── */
+    :root {
+      --bg:       #080f1a;
+      --surface:  #0d1726;
+      --surface2: #111f33;
+      --border:   rgba(255,255,255,.07);
+      --border2:  rgba(255,255,255,.12);
+      --text:     #dde8f8;
+      --muted:    #5d7a9e;
+      --muted2:   #8aa3c0;
+      --ok:       #2dd4bf;
+      --warn:     #f59e0b;
+      --bad:      #f43f5e;
+      --blue:     #38bdf8;
+      --purple:   #a78bfa;
+      --yellow:   #fbbf24;
+      --radius:   14px;
+      --radius-sm:10px;
+      --shadow:   0 4px 24px rgba(0,0,0,.4);
+      --mono: ui-monospace, "SF Mono", "Cascadia Code", "Fira Code", Menlo, monospace;
+      --sans: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif;
-      background: radial-gradient(1200px 700px at 20% 0%, rgba(45,212,191,.10), transparent 45%),
-                  radial-gradient(1100px 700px at 90% 30%, rgba(99,102,241,.10), transparent 55%),
-                  var(--bg);
-      color:var(--text);
-    }
-    header{
-      padding:22px 18px 0 18px;
-      max-width:1200px;
-      margin:0 auto;
-    }
-    .title{
-      display:flex; align-items:flex-end; justify-content:space-between; gap:12px;
-      padding:18px 18px;
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border:1px solid rgba(255,255,255,.06);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-    }
-    .title h1{margin:0; font-size:22px; letter-spacing:.2px}
-    .title .sub{margin-top:6px; color:var(--muted); font-size:13px}
-    .badge{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:8px 12px; border-radius:999px;
-      background: rgba(45,212,191,.12);
-      border:1px solid rgba(45,212,191,.25);
-      color: var(--ok);
-      font-weight:600;
-      white-space:nowrap;
-    }
-    .badge.bad{background: rgba(251,113,133,.12); border-color: rgba(251,113,133,.25); color: var(--bad)}
-    .badge.warn{background: rgba(251,191,36,.12); border-color: rgba(251,191,36,.25); color: var(--warn)}
-    main{
-      padding:16px 18px 32px 18px;
-      max-width:1200px;
-      margin:0 auto;
-    }
-    .controls{
-      display:flex; flex-wrap:wrap; gap:10px;
-      align-items:center;
-      padding:14px 14px;
-      background: rgba(255,255,255,.03);
-      border:1px solid rgba(255,255,255,.06);
-      border-radius: var(--radius);
-    }
-    label{font-size:12px; color:var(--muted)}
-    .ctrl{
-      display:flex; flex-direction:column; gap:6px;
-      min-width: 180px;
-    }
-    input, select{
-      background: var(--panel2);
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
       color: var(--text);
-      border: 1px solid rgba(255,255,255,.10);
-      border-radius: 12px;
-      padding:10px 12px;
-      outline:none;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+      /* Subtle noise texture via gradient */
+      background-image:
+        radial-gradient(ellipse 900px 500px at 0% 0%,   rgba(45,212,191,.06) 0%, transparent 60%),
+        radial-gradient(ellipse 700px 500px at 100% 60%, rgba(56,189,248,.05) 0%, transparent 55%);
     }
-    input:focus, select:focus{border-color: rgba(45,212,191,.45); box-shadow: 0 0 0 3px rgba(45,212,191,.10);}
-    button{
-      background: linear-gradient(180deg, rgba(45,212,191,.22), rgba(45,212,191,.10));
-      border:1px solid rgba(45,212,191,.30);
-      color: var(--text);
-      padding:11px 14px;
-      border-radius: 14px;
-      font-weight:700;
-      cursor:pointer;
-    }
-    button.secondary{
-      background: rgba(255,255,255,.04);
-      border:1px solid rgba(255,255,255,.10);
-      font-weight:600;
-    }
-    button:disabled{opacity:.5; cursor:not-allowed}
-    .grid{
-      margin-top:14px;
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:14px;
-    }
-    .cards{
-      display:grid;
-      grid-template-columns: repeat(4, minmax(0,1fr));
-      gap:12px;
-    }
-    @media (max-width: 980px){
-      .cards{grid-template-columns: repeat(2, minmax(0,1fr));}
-      .ctrl{min-width: 150px;}
-    }
-    @media (max-width: 520px){
-      .cards{grid-template-columns: 1fr;}
-    }
-    .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border:1px solid rgba(255,255,255,.06);
+
+    /* ── Layout ──────────────────────────────────────────────────────── */
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 20px 16px 40px; }
+
+    /* ── Top bar ─────────────────────────────────────────────────────── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 14px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding:14px 14px;
-      box-shadow: var(--shadow);
-      position:relative;
-      overflow:hidden;
+      margin-bottom: 14px;
     }
-    .card h3{margin:0 0 8px 0; font-size:14px; color:var(--muted); font-weight:650}
-    .big{font-size:26px; font-weight:900; letter-spacing:.2px}
-    .small{font-size:12px; color:var(--muted)}
-    .split{
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap:14px;
+    .topbar-left { display: flex; flex-direction: column; gap: 2px; }
+    .topbar h1 { font-size: 17px; font-weight: 700; letter-spacing: -.01em; color: var(--text); }
+    .topbar .sub { font-size: 12px; color: var(--muted); }
+    .topbar .sub code {
+      font-family: var(--mono);
+      font-size: 11px;
+      background: rgba(255,255,255,.06);
+      padding: 1px 5px;
+      border-radius: 4px;
     }
-    @media (max-width: 980px){ .split{grid-template-columns:1fr;} }
-    .panel{
-      background: rgba(255,255,255,.03);
-      border:1px solid rgba(255,255,255,.06);
-      border-radius: var(--radius);
-      padding:14px;
-      box-shadow: var(--shadow);
-    }
-    .panel h2{margin:0 0 10px 0; font-size:16px}
-    .panel .hint{color:var(--muted); font-size:12px; margin:0 0 10px 0}
-    .row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:6px 0}
-    .chip{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:7px 10px;
-      background: var(--chip);
-      border:1px solid rgba(255,255,255,.08);
+
+    /* ── Health badge ────────────────────────────────────────────────── */
+    #healthBadge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 12px;
       border-radius: 999px;
-      color: var(--muted);
-      font-size:12px;
-      white-space:nowrap;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      border: 1px solid transparent;
+      transition: background .2s, color .2s, border-color .2s;
+      white-space: nowrap;
     }
-    .table-wrap{overflow:auto; border-radius: var(--radius); border:1px solid rgba(255,255,255,.06)}
-    table{
-      width:100%;
-      border-collapse:collapse;
-      min-width: 980px;
-      background: rgba(0,0,0,.12);
+    #healthBadge::before {
+      content: "";
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: .85;
+      flex-shrink: 0;
     }
-    th, td{
-      padding:10px 10px;
-      border-bottom:1px solid rgba(255,255,255,.06);
-      font-size:12px;
-      text-align:right;
-      white-space:nowrap;
-    }
-    th{
-      position:sticky; top:0;
-      background: rgba(12,22,40,.95);
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing:.08em;
-      font-size:11px;
-    }
-    td:first-child, th:first-child{ text-align:left; }
-    tr:hover td{ background: rgba(255,255,255,.03); }
-    .muted{color:var(--muted)}
-    .ok{color:var(--ok)}
-    .warn{color:var(--warn)}
-    .bad{color:var(--bad)}
-    .canvas-wrap{
-      background: rgba(0,0,0,.12);
-      border:1px solid rgba(255,255,255,.06);
+    #healthBadge          { background: rgba(245,158,11,.10); border-color: rgba(245,158,11,.25); color: var(--warn); }
+    #healthBadge.ok       { background: rgba(45,212,191,.10); border-color: rgba(45,212,191,.25); color: var(--ok); }
+    #healthBadge.bad      { background: rgba(244, 63,94,.10); border-color: rgba(244, 63,94,.25); color: var(--bad); }
+
+    /* ── Controls ────────────────────────────────────────────────────── */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 10px;
+      padding: 12px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding:12px;
-      overflow:hidden;
+      margin-bottom: 14px;
     }
-    canvas{width:100%; height:260px;}
-    .foot{
-      margin-top:10px;
-      color:var(--muted);
-      font-size:12px;
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
+    .ctrl { display: flex; flex-direction: column; gap: 5px; }
+    .ctrl label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+    input, select {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input:focus, select:focus { border-color: rgba(45,212,191,.5); box-shadow: 0 0 0 3px rgba(45,212,191,.08); }
+    .ctrl-buttons { display: flex; gap: 8px; align-items: flex-end; margin-left: auto; }
+    button {
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: opacity .12s, transform .08s;
+    }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary {
+      background: linear-gradient(135deg, rgba(45,212,191,.25), rgba(45,212,191,.12));
+      border-color: rgba(45,212,191,.35);
+      color: var(--ok);
+    }
+    .btn-primary:hover:not(:disabled) { opacity: .85; }
+    .btn-secondary {
+      background: rgba(255,255,255,.04);
+      border-color: var(--border2);
+      color: var(--muted2);
+    }
+    .btn-secondary:hover:not(:disabled) { background: rgba(255,255,255,.07); color: var(--text); }
+
+    /* ── KPI cards ───────────────────────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 860px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 460px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 16px 14px;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--accent, transparent);
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .kpi[data-accent="blue"]   { --accent: var(--blue); }
+    .kpi[data-accent="purple"] { --accent: var(--purple); }
+    .kpi[data-accent="teal"]   { --accent: var(--ok); }
+    .kpi[data-accent="status"] { --accent: var(--kpi-status-color, var(--muted)); }
+
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .kpi-value {
+      font-family: var(--mono);
+      font-size: 30px;
+      font-weight: 900;
+      letter-spacing: -.02em;
+      line-height: 1;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--muted);
     }
 
-    /* Print */
-    @media print{
-      body{background:#fff; color:#000}
-      header, main{max-width:100%; padding:0}
-      .title,.controls,.panel,.card,.canvas-wrap{box-shadow:none}
-      .title,.controls,.panel,.card,.canvas-wrap{border:1px solid #ddd; background:#fff}
-      .muted{color:#444}
-      .chip{border:1px solid #ddd; background:#fff}
-      th{background:#f5f5f5}
-      a{color:#000}
-      button{display:none}
-    }
-  
-/* Advanced columns (hidden by default) */
-th.adv, td.adv { display: none; }
-body.show-advanced th.adv, body.show-advanced td.adv { display: table-cell; }
-.ctrl .inline { display:flex; align-items:center; gap:10px; }
-.ctrl .hint { margin-top:6px; font-size:12px; color: var(--muted); }
+    /* Status KPI — text changes color */
+    #kpiStatus.ok     { color: var(--ok); }
+    #kpiStatus.warn   { color: var(--warn); }
+    #kpiStatus.bad    { color: var(--bad); }
 
-</style>
+    /* ── Chart panel ─────────────────────────────────────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .panel-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      color: var(--text);
+    }
+    .legend {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted2);
+    }
+    .legend-dot {
+      width: 20px; height: 3px;
+      border-radius: 2px;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      background: rgba(0,0,0,.15);
+    }
+    canvas { width: 100%; height: 280px; display: block; }
+
+    /* Tooltip ── fixed position, follows mouse */
+    #tooltip {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      background: rgba(10,20,38,.97);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 12px;
+      box-shadow: 0 8px 30px rgba(0,0,0,.5);
+      min-width: 150px;
+      opacity: 0;
+      transition: opacity .12s;
+    }
+    #tooltip.visible { opacity: 1; }
+    #tooltip .tt-date {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: .05em;
+      text-transform: uppercase;
+      margin-bottom: 7px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    #tooltip .tt-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      margin-top: 4px;
+      align-items: center;
+    }
+    #tooltip .tt-label {
+      display: flex; align-items: center; gap: 6px;
+      color: var(--muted2);
+    }
+    #tooltip .tt-label span {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    #tooltip .tt-val {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    /* ── Table ───────────────────────────────────────────────────────── */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 480px;
+      background: rgba(0,0,0,.10);
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: rgba(10,20,36,.97);
+      backdrop-filter: blur(6px);
+      padding: 9px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      text-align: right;
+      border-bottom: 1px solid var(--border2);
+      white-space: nowrap;
+    }
+    th:first-child { text-align: left; }
+    td {
+      padding: 9px 12px;
+      font-size: 13px;
+      text-align: right;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      color: var(--text);
+    }
+    td:first-child { text-align: left; font-family: var(--mono); font-size: 12px; color: var(--muted2); }
+    td.num { font-family: var(--mono); }
+    td.status-ok   { color: var(--ok);   font-weight: 700; }
+    td.status-warn { color: var(--warn); font-weight: 700; }
+    td.status-bad  { color: var(--muted); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.025); }
+
+    /* advanced cols hidden by default */
+    th.adv, td.adv { display: none; }
+    body.show-adv th.adv, body.show-adv td.adv { display: table-cell; }
+
+    /* ── Advanced section ────────────────────────────────────────────── */
+    .adv-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding: 9px 12px;
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,.02);
+      border: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted2);
+      width: 100%;
+      text-align: left;
+      margin-top: 10px;
+      transition: background .12s;
+    }
+    .adv-toggle:hover { background: rgba(255,255,255,.04); }
+    .adv-toggle .chevron { margin-left: auto; transition: transform .2s; }
+    .adv-toggle.open .chevron { transform: rotate(180deg); }
+    .adv-content {
+      display: none;
+      margin-top: 10px;
+    }
+    .adv-content.visible { display: block; }
+
+    .adv-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    @media (max-width: 600px) { .adv-stats { grid-template-columns: 1fr; } }
+    .adv-stat {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+    }
+    .adv-stat .label { font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+    .adv-stat .value { font-family: var(--mono); font-size: 18px; font-weight: 800; }
+
+    /* ── Foot row ────────────────────────────────────────────────────── */
+    .panel-foot {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* ── Empty / error states ────────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+    .empty-state .icon { font-size: 28px; margin-bottom: 8px; }
+    .empty-state p { font-size: 13px; }
+
+    /* ── Print ───────────────────────────────────────────────────────── */
+    @media print {
+      body { background: #fff; color: #000; }
+      .controls, .btn-secondary, .adv-toggle, button { display: none !important; }
+      .kpi, .panel { border: 1px solid #ddd; background: #fff; box-shadow: none; }
+      th { background: #f5f5f5; color: #333; }
+      td { color: #111; }
+      .kpi-value { color: #000; }
+      .kpi-sub, .panel-foot, .muted { color: #666; }
+      #healthBadge { border: 1px solid #999; color: #333; background: #f5f5f5; }
+    }
+  </style>
 </head>
 <body>
-<header>
-  <div class="title">
-    <div>
-      <h1>Status CRR5 — Relatório por Snapshots</h1>
-      <div class="sub">Este relatório usa <b>arquivos diários</b> em <code>/data/YYYY-MM-DD.json</code>. Não consulta o Worker <code>/save</code> nem <code>/load</code>.</div>
-    </div>
-    <div id="healthBadge" class="badge warn">pronto para carregar</div>
-  </div>
-</header>
 
-<main>
+<div class="wrap">
+
+  <!-- ── Top bar ── -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1>CRR5 — Relatório de Uso</h1>
+      <div class="sub">Lê apenas <code>/data/YYYY-MM-DD.json</code> — não consome o Worker em produção.</div>
+    </div>
+    <div id="healthBadge">pronto para carregar</div>
+  </div>
+
+  <!-- ── Controls ── -->
   <div class="controls">
     <div class="ctrl">
       <label for="mode">Modo</label>
       <select id="mode">
-        <option value="month" selected>Mês (recomendado)</option>
-        <option value="range">Período (datas)</option>
-        <option value="week">Semana (a partir de uma data)</option>
+        <option value="month" selected>Mês</option>
+        <option value="range">Período</option>
       </select>
     </div>
 
@@ -250,571 +458,808 @@ body.show-advanced th.adv, body.show-advanced td.adv { display: table-cell; }
       <label for="start">De</label>
       <input id="start" type="date" />
     </div>
-
     <div class="ctrl" id="endCtrl" style="display:none">
       <label for="end">Até</label>
       <input id="end" type="date" />
     </div>
 
-    <div class="ctrl" id="weekCtrl" style="display:none">
-      <label for="weekStart">Início da semana</label>
-      <input id="weekStart" type="date" />
-    </div>
-
     <div class="ctrl">
-      <label for="basePath">Caminho base dos snapshots</label>
-      <input id="basePath" type="text" value="./data" />
+      <label for="basePath">Caminho base</label>
+      <input id="basePath" type="text" value="./data" style="width:140px" />
     </div>
 
-    
-        <div class="ctrl">
-          <label class="inline"><input id="toggleAdvanced" type="checkbox"> Mostrar detalhes avançados</label>
-          <div class="hint">Mostra colunas extras na tabela (CF Requests/Subrequests e CPU P50/P90).</div>
-        </div>
-<div style="display:flex; gap:10px; align-items:flex-end; margin-left:auto;">
-      <button id="btnLoad">Carregar</button>
-      <button id="btnCSV" class="secondary" disabled>Baixar CSV</button>
-      <button id="btnPrint" class="secondary" disabled>Imprimir/PDF</button>
+    <div class="ctrl-buttons">
+      <button id="btnLoad" class="btn-primary">Carregar</button>
+      <button id="btnCSV"  class="btn-secondary" disabled>Baixar CSV</button>
+      <button id="btnPrint" class="btn-secondary" disabled>Imprimir</button>
     </div>
   </div>
 
-  <div class="grid">
-    <div class="cards">
-      <div class="card">
-        <h3>CRR5 criados (Writes)</h3>
-        <div id="kpiWrites" class="big">—</div>
-        <div id="kpiWritesSub" class="small">—</div>
-      </div>
-      <div class="card">
-        <h3>CRR5 carregados (Reads)</h3>
-        <div id="kpiReads" class="big">—</div>
-        <div id="kpiReadsSub" class="small">—</div>
-      </div>
-      <div class="card">
-        <h3>Comandos totais (Redis)</h3>
-        <div id="kpiCmds" class="big">—</div>
-        <div id="kpiCmdsSub" class="small">—</div>
-      </div>
-      <div class="card">
-        <h3>Saúde do Worker (CF)</h3>
-        <div id="kpiErrors" class="big">—</div>
-        <div id="kpiErrorsSub" class="small">—</div>
-      </div>
+  <!-- ── KPI cards ── -->
+  <div class="kpi-grid">
+    <div class="kpi" data-accent="blue">
+      <div class="kpi-label">CRR5 Criados</div>
+      <div id="kpiWrites" class="kpi-value">—</div>
+      <div id="kpiWritesSub" class="kpi-sub">writes no período</div>
     </div>
-
-    <div class="split">
-      <div class="panel">
-        <h2>Resumo do período</h2>
-        <p class="hint">Criação/leitura usa “diferença” entre contadores mensais do Upstash (reads/writes). Se faltar dia, usa o último snapshot anterior disponível.</p>
-        <div class="row"><span class="muted">Período analisado</span><span id="sumPeriod" class="chip">—</span></div>
-        <div class="row"><span class="muted">Dias com snapshot</span><span id="sumCoverage" class="chip">—</span></div>
-        <div class="row"><span class="muted">Reuso (Reads/Writes)</span><span id="sumReuse" class="chip">—</span></div>
-        <div class="row"><span class="muted">Storage (último dia)</span><span id="sumStorage" class="chip">—</span></div>
-        <div class="row"><span class="muted">Custo (último dia)</span><span id="sumCost" class="chip">—</span></div>
-        <div class="row"><span class="muted">Última coleta</span><span id="sumLast" class="chip">—</span></div>
-      </div>
-
-      <div class="panel">
-        <h2>Gráficos (por dia)</h2>
-        <p class="hint">Writes = “CRR5 gerados”. Reads = “CRR5 carregados”. CPU P99 é o “pior” nível de latência (quase sempre).</p>
-        <div class="canvas-wrap">
-          <canvas id="chart"></canvas>
-        </div>
-        <div class="foot">
-          <span class="muted">Dica: para apresentação, clique em <b>Imprimir/PDF</b>.</span>
-          <span id="chartLegend" class="muted">—</span>
-        </div>
-      </div>
+    <div class="kpi" data-accent="purple">
+      <div class="kpi-label">CRR5 Carregados</div>
+      <div id="kpiReads" class="kpi-value">—</div>
+      <div id="kpiReadsSub" class="kpi-sub">reads no período</div>
     </div>
-
-    <div class="panel">
-      <h2>Detalhamento diário</h2>
-      <p class="hint">Arquivos lidos de <code>/data</code>. Se um dia não existir, aparece como “sem snapshot”.</p>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Writes (dia)</th>
-              <th>Reads (dia)</th>
-              <th>Commands (dia)</th>
-              <th>Storage (MB)</th>
-              <th class="adv">CF Requests (24h)</th>
-              <th class="adv">CF Subrequests (24h)</th>
-              <th>CF Errors (24h)</th>
-              <th class="adv">CPU P50 (ms)</th>
-              <th class="adv">CPU P90 (ms)</th>
-              <th>CPU P99 (ms)</th>
-              <th>Status snapshot</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
-      <div class="foot">
-        <span class="muted">Export CSV: abre no Excel e monta seu relatório.</span>
-        <span class="muted">Fonte: snapshots locais (sem custo no Redis do CRR5).</span>
-      </div>
+    <div class="kpi" data-accent="teal">
+      <div class="kpi-label">Comandos Redis</div>
+      <div id="kpiCmds" class="kpi-value">—</div>
+      <div id="kpiCmdsSub" class="kpi-sub">comandos no período</div>
+    </div>
+    <div class="kpi" data-accent="status">
+      <div class="kpi-label">Cobertura</div>
+      <div id="kpiStatus" class="kpi-value">—</div>
+      <div id="kpiStatusSub" class="kpi-sub">dias com snapshot</div>
     </div>
   </div>
-</main>
+
+  <!-- ── Chart ── -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Atividade diária</span>
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-dot" style="background:var(--blue)"></div>
+          CRR5 Criados (Writes)
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:var(--purple)"></div>
+          CRR5 Carregados (Reads)
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:var(--yellow); opacity:.7; border-top: 2px dashed var(--yellow); height:0; width:20px"></div>
+          Comandos
+        </div>
+      </div>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="chart"></canvas>
+    </div>
+    <div id="chartEmpty" class="empty-state" style="display:none">
+      <div class="icon">📊</div>
+      <p>Nenhum dado para exibir no período.</p>
+    </div>
+  </div>
+
+  <!-- ── Table ── -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Detalhamento diário</span>
+      <span id="periodLabel" style="font-size:12px;color:var(--muted)">—</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Writes</th>
+            <th>Reads</th>
+            <th>Comandos</th>
+            <!-- advanced cols -->
+            <th class="adv">Storage (MB)</th>
+            <th class="adv">Errors (CF)</th>
+            <th class="adv">CPU P99 (ms)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="5" class="empty-state" style="padding:32px;text-align:center;color:var(--muted)">Clique em Carregar para ver os dados.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Advanced section ── collapsed by default -->
+    <button class="adv-toggle" id="advToggle">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+      Detalhes avançados (Storage, Errors, CPU P99)
+      <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+
+    <div class="adv-content" id="advContent">
+      <div class="adv-stats">
+        <div class="adv-stat">
+          <div class="label">Storage (último dia)</div>
+          <div id="advStorage" class="value">—</div>
+        </div>
+        <div class="adv-stat">
+          <div class="label">CF Errors (período)</div>
+          <div id="advErrors" class="value">—</div>
+        </div>
+        <div class="adv-stat">
+          <div class="label">CPU P99 médio</div>
+          <div id="advCpu" class="value">—</div>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--muted)">
+        Ative "Mostrar colunas avançadas" para ver Storage, Errors e CPU P99 na tabela acima.
+        <label style="margin-left:10px;cursor:pointer">
+          <input type="checkbox" id="toggleAdvCols" style="margin-right:4px">
+          Mostrar colunas na tabela
+        </label>
+      </p>
+    </div>
+
+    <div class="panel-foot">
+      <span>Diferença entre contadores mensais do Upstash entre dias consecutivos.</span>
+      <span id="coverageNote" style="color:var(--muted)">—</span>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- Tooltip ── rendered outside wrap so z-index works cleanly -->
+<div id="tooltip">
+  <div id="ttDate" class="tt-date">—</div>
+  <div class="tt-row">
+    <div class="tt-label"><span style="background:var(--blue)"></span>Writes</div>
+    <div id="ttW" class="tt-val">—</div>
+  </div>
+  <div class="tt-row">
+    <div class="tt-label"><span style="background:var(--purple)"></span>Reads</div>
+    <div id="ttR" class="tt-val">—</div>
+  </div>
+  <div class="tt-row">
+    <div class="tt-label"><span style="background:var(--yellow)"></span>Cmds</div>
+    <div id="ttC" class="tt-val">—</div>
+  </div>
+</div>
 
 <script>
-  const $ = (id) => document.getElementById(id);
-  const fmtInt = (n) => (n === null || n === undefined || Number.isNaN(n)) ? "—" : new Intl.NumberFormat("pt-BR").format(Math.round(n));
-  const fmtFloat = (n, d=2) => (n === null || n === undefined || Number.isNaN(n)) ? "—" : new Intl.NumberFormat("pt-BR",{minimumFractionDigits:d, maximumFractionDigits:d}).format(n);
-  const fmtMoney = (n) => (n === null || n === undefined || Number.isNaN(n)) ? "—" : new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n);
-  const bytesToMB = (b) => (b === null || b === undefined || Number.isNaN(b)) ? null : (b / (1024*1024));
-  const usToMs = (us) => (us === null || us === undefined || Number.isNaN(us)) ? null : (us/1000);
-  const pad2 = (x) => String(x).padStart(2,"0");
+"use strict";
+/* ═══════════════════════════════════════════════════════════════════════════
+   Utility
+═══════════════════════════════════════════════════════════════════════════ */
+const $ = (id) => document.getElementById(id);
+const fmtInt   = (n) => (n == null || !Number.isFinite(+n)) ? "—" : new Intl.NumberFormat("pt-BR").format(Math.round(n));
+const fmtFloat = (n, d=2) => (n == null || !Number.isFinite(+n)) ? "—" : new Intl.NumberFormat("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d}).format(n);
+const fmtDelta = (n) => {
+  if (n == null || !Number.isFinite(n)) return "—";
+  if (n < 0) return "↩ reset";
+  return fmtInt(n);
+};
+const bytesToMB = (b) => (b == null || !Number.isFinite(b)) ? null : b / (1024*1024);
+const usToMs    = (us) => (us == null || !Number.isFinite(us)) ? null : us / 1000;
+const pad2 = (x) => String(x).padStart(2,"0");
 
-  function ymdUTC(date){
-    return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth()+1)}-${pad2(date.getUTCDate())}`;
-  }
-  function parseYMD(s){
-    const [y,m,d] = s.split("-").map(Number);
-    return new Date(Date.UTC(y, m-1, d));
-  }
-  function addDays(dateUTC, days){
-    const d = new Date(dateUTC.getTime());
-    d.setUTCDate(d.getUTCDate() + days);
-    return d;
-  }
-  function daysInMonthUTC(y, m1to12){
-    return new Date(Date.UTC(y, m1to12, 0)).getUTCDate();
-  }
-  function setBadge(state, text){
-    const el = $("healthBadge");
-    el.className = "badge";
-    if (state === "warn") el.classList.add("warn");
-    if (state === "bad") el.classList.add("bad");
-    el.textContent = text;
-  }
+function ymdUTC(date) {
+  return `${date.getUTCFullYear()}-${pad2(date.getUTCMonth()+1)}-${pad2(date.getUTCDate())}`;
+}
+function parseYMD(s) {
+  const [y,m,d] = s.split("-").map(Number);
+  return new Date(Date.UTC(y, m-1, d));
+}
+function addDays(dateUTC, days) {
+  const d = new Date(dateUTC.getTime());
+  d.setUTCDate(d.getUTCDate() + days);
+  return d;
+}
+function daysInMonthUTC(y, m) {
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
 
-  async function fetchJson(url){
+/* ═══════════════════════════════════════════════════════════════════════════
+   Health badge
+═══════════════════════════════════════════════════════════════════════════ */
+function setBadge(state, text) {
+  const el = $("healthBadge");
+  el.className = state === "ok" ? "ok" : state === "bad" ? "bad" : "";
+  el.textContent = text;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Fetch helpers
+═══════════════════════════════════════════════════════════════════════════ */
+async function fetchJson(url) {
+  try {
     const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return { ok:false, status: res.status };
-    try{
-      const j = await res.json();
-      return { ok:true, json:j };
-    }catch(e){
-      return { ok:false, status: "bad_json" };
+    if (!res.ok) return { ok: false, status: res.status };
+    const j = await res.json();
+    return { ok: true, json: j };
+  } catch(e) {
+    return { ok: false, status: "network_error" };
+  }
+}
+
+// Concurrent fetch with concurrency limit
+async function mapLimit(items, limit, mapper) {
+  const out = new Array(items.length);
+  let i = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (i < items.length) {
+      const idx = i++;
+      out[idx] = await mapper(items[idx], idx);
     }
-  }
-  async function mapLimit(items, limit, mapper){
-    const out = new Array(items.length);
-    let i = 0;
-    const workers = new Array(Math.min(limit, items.length)).fill(0).map(async () => {
-      while (i < items.length){
-        const idx = i++;
-        out[idx] = await mapper(items[idx], idx);
-      }
-    });
-    await Promise.all(workers);
-    return out;
-  }
+  });
+  await Promise.all(workers);
+  return out;
+}
 
-  function syncMode(){
-    const mode = $("mode").value;
-    $("monthCtrl").style.display = (mode === "month") ? "" : "none";
-    $("startCtrl").style.display = (mode === "range") ? "" : "none";
-    $("endCtrl").style.display   = (mode === "range") ? "" : "none";
-    $("weekCtrl").style.display  = (mode === "week") ? "" : "none";
-  }
-  $("mode").addEventListener("change", syncMode);
-  syncMode();
+/* ═══════════════════════════════════════════════════════════════════════════
+   Data extraction from snapshot JSON
+   Supports both formats:
+     A) { data: { upstash, cloudflare } }          ← snapshot.js wrapper
+     B) { upstash, cloudflare }                    ← raw metrics.js output
+═══════════════════════════════════════════════════════════════════════════ */
+function extract(snapshot) {
+  const raw = snapshot?.data || snapshot || {};
+  const up  = raw?.upstash    || {};
+  const cf  = raw?.cloudflare || {};
+  return {
+    fetched_at:              snapshot?.captured_at || snapshot?.fetched_at_utc || raw?.at || null,
+    up_ok:                   up?.ok === true,
+    up_total_monthly:        up?.total_monthly_requests ?? null,
+    up_monthly_reads:        up?.monthly_reads  ?? null,
+    up_monthly_writes:       up?.monthly_writes ?? null,
+    up_storage_bytes:        up?.current_storage_bytes ?? null,
+    up_billing_usd:          up?.monthly_billing_usd ?? null,
+    cf_ok:                   cf?.ok === true,
+    cf_requests:             cf?.requests    ?? null,
+    cf_errors:               cf?.errors      ?? null,
+    cf_cpu_p50_us:           cf?.cpu_p50_us  ?? null,
+    cf_cpu_p90_us:           cf?.cpu_p90_us  ?? null,
+    cf_cpu_p99_us:           cf?.cpu_p99_us  ?? null,
+  };
+}
 
-  const now = new Date();
-  $("month").value = `${now.getUTCFullYear()}-${pad2(now.getUTCMonth()+1)}`;
+function isValidSnapshot(x) {
+  // A snapshot is "valid" if upstash data looks present
+  return x != null && x.up_ok === true;
+}
 
-  function extract(snapshot){
-    const raw = snapshot?.data || {};
-    const up = raw?.upstash || {};
-    const cf = raw?.cloudflare || {};
-    return {
-      fetched_at: snapshot?.fetched_at_utc || raw?.at || null,
-      up_total_monthly_requests: up?.total_monthly_requests ?? null,
-      up_monthly_reads: up?.monthly_reads ?? null,
-      up_monthly_writes: up?.monthly_writes ?? null,
-      up_daily_net_commands: up?.daily_net_commands ?? null,
-      up_storage_bytes: up?.current_storage_bytes ?? null,
-      up_billing_usd: up?.monthly_billing_usd ?? null,
-      cf_requests: cf?.requests ?? null,
-      cf_subrequests: cf?.subrequests ?? null,
-      cf_errors: cf?.errors ?? null,
-      cf_cpu_p50_us: cf?.cpu_p50_us ?? null,
-      cf_cpu_p90_us: cf?.cpu_p90_us ?? null,
-      cf_cpu_p99_us: cf?.cpu_p99_us ?? null,
-    };
-  }
-
-  function computeDeltas(rows){
-    let last = null;
-    for (const r of rows){
-      if (!r.present){
-        r.d_reads = null; r.d_writes = null; r.d_cmds = null;
-        continue;
-      }
-      const curReads = r.x.up_monthly_reads;
-      const curWrites = r.x.up_monthly_writes;
-      const curCmds = r.x.up_total_monthly_requests;
-
-      if (!last){
-        r.d_reads = curReads ?? null;
-        r.d_writes = curWrites ?? null;
-        r.d_cmds = curCmds ?? null;
-      } else {
-        const dr = (curReads ?? null) - (last.x.up_monthly_reads ?? 0);
-        const dw = (curWrites ?? null) - (last.x.up_monthly_writes ?? 0);
-        const dc = (curCmds ?? null) - (last.x.up_total_monthly_requests ?? 0);
-        r.d_reads = (dr !== null && dr >= 0) ? dr : (curReads ?? null);
-        r.d_writes = (dw !== null && dw >= 0) ? dw : (curWrites ?? null);
-        r.d_cmds = (dc !== null && dc >= 0) ? dc : (curCmds ?? null);
-      }
-      last = r;
+/* ═══════════════════════════════════════════════════════════════════════════
+   Delta computation
+   Daily delta = difference between consecutive Upstash monthly counters.
+   On month rollover (counter resets), delta will be negative → we treat it
+   as the absolute counter value for that day (fresh start of month).
+═══════════════════════════════════════════════════════════════════════════ */
+function computeDeltas(rows) {
+  let last = null;
+  for (const r of rows) {
+    if (!r.present || !r.x) {
+      r.d_reads = null; r.d_writes = null; r.d_cmds = null;
+      r.reset = false;
+      continue;
     }
-    return rows;
-  }
+    const curR = r.x.up_monthly_reads;
+    const curW = r.x.up_monthly_writes;
+    const curC = r.x.up_total_monthly;
 
-  function buildCSV(rows){
-    const header = [
-      "date","writes_day","reads_day","commands_day","storage_mb",
-      "cf_requests_24h","cf_subrequests_24h","cf_errors_24h",
-      "cpu_p50_ms","cpu_p90_ms","cpu_p99_ms","snapshot_present"
-    ];
-    const lines = [header.join(",")];
-    for (const r of rows){
-      const storageMB = bytesToMB(r.x?.up_storage_bytes ?? null);
-      const cpu50 = usToMs(r.x?.cf_cpu_p50_us ?? null);
-      const cpu90 = usToMs(r.x?.cf_cpu_p90_us ?? null);
-      const cpu99 = usToMs(r.x?.cf_cpu_p99_us ?? null);
-
-      lines.push([
-        r.ymd,
-        r.d_writes ?? "",
-        r.d_reads ?? "",
-        r.d_cmds ?? "",
-        (storageMB===null?"":storageMB.toFixed(4)),
-        r.x?.cf_requests ?? "",
-        r.x?.cf_subrequests ?? "",
-        r.x?.cf_errors ?? "",
-        (cpu50===null?"":cpu50.toFixed(3)),
-        (cpu90===null?"":cpu90.toFixed(3)),
-        (cpu99===null?"":cpu99.toFixed(3)),
-        r.present ? "1" : "0",
-      ].join(","));
+    if (!last) {
+      // First available snapshot — use absolute values (no prior context)
+      r.d_reads  = curR;
+      r.d_writes = curW;
+      r.d_cmds   = curC;
+      r.reset    = false;
+    } else {
+      const dr = (curR != null && last.x.up_monthly_reads  != null) ? curR - last.x.up_monthly_reads  : null;
+      const dw = (curW != null && last.x.up_monthly_writes != null) ? curW - last.x.up_monthly_writes : null;
+      const dc = (curC != null && last.x.up_total_monthly  != null) ? curC - last.x.up_total_monthly  : null;
+      // Negative delta = counter reset (start of month or manual reset)
+      r.reset    = (dr != null && dr < 0) || (dw != null && dw < 0);
+      r.d_reads  = (dr != null && dr >= 0) ? dr : curR;
+      r.d_writes = (dw != null && dw >= 0) ? dw : curW;
+      r.d_cmds   = (dc != null && dc >= 0) ? dc : curC;
     }
-    return lines.join("\n");
+    last = r;
   }
-  function download(filename, content, mime="text/plain"){
-    const blob = new Blob([content], { type: mime });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-  }
+  return rows;
+}
 
-  function renderTable(rows){
-    const tb = $("tbody");
-    tb.innerHTML = "";
-    for (const r of rows){
-      const storageMB = bytesToMB(r.x?.up_storage_bytes ?? null);
-      const cpu50 = usToMs(r.x?.cf_cpu_p50_us ?? null);
-      const cpu90 = usToMs(r.x?.cf_cpu_p90_us ?? null);
-      const cpu99 = usToMs(r.x?.cf_cpu_p99_us ?? null);
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${r.ymd}</td>
-        <td>${fmtInt(r.d_writes)}</td>
-        <td>${fmtInt(r.d_reads)}</td>
-        <td>${fmtInt(r.d_cmds)}</td>
-        <td>${storageMB===null ? "—" : fmtFloat(storageMB,2)}</td>
-        <td class="adv">${fmtInt(r.x?.cf_requests ?? null)}</td>
-        <td class="adv">${fmtInt(r.x?.cf_subrequests ?? null)}</td>
-        <td>${fmtInt(r.x?.cf_errors ?? null)}</td>
-        <td class="adv">${cpu50===null ? "—" : fmtFloat(cpu50,2)}</td>
-        <td class="adv">${cpu90===null ? "—" : fmtFloat(cpu90,2)}</td>
-        <td>${cpu99===null ? "—" : fmtFloat(cpu99,2)}</td>
-        <td class="${r.present ? "ok" : "muted"}">${r.present ? "ok" : "sem snapshot"}</td>
-      `;
-      tb.appendChild(tr);
-    }
-  }
+/* ═══════════════════════════════════════════════════════════════════════════
+   Render: KPI cards
+═══════════════════════════════════════════════════════════════════════════ */
+function renderKPIs(rows, periodLabel) {
+  const present = rows.filter(r => r.present && r.x && isValidSnapshot(r.x));
+  const n = present.length;
 
-  function renderKPIs(rows, periodLabel){
-    const present = rows.filter(r=>r.present);
-    const totalWrites = present.reduce((a,r)=>a + (r.d_writes||0), 0);
-    const totalReads = present.reduce((a,r)=>a + (r.d_reads||0), 0);
-    const totalCmds = present.reduce((a,r)=>a + (r.d_cmds||0), 0);
-    const totalErrors = present.reduce((a,r)=>a + (r.x?.cf_errors||0), 0);
+  const totalW = present.reduce((a, r) => a + Math.max(0, r.d_writes || 0), 0);
+  const totalR = present.reduce((a, r) => a + Math.max(0, r.d_reads  || 0), 0);
+  const totalC = present.reduce((a, r) => a + Math.max(0, r.d_cmds   || 0), 0);
+  const totalE = present.reduce((a, r) => a + (r.x?.cf_errors || 0), 0);
 
-    const last = present[present.length-1] || null;
-    const lastStorageMB = bytesToMB(last?.x?.up_storage_bytes ?? null);
-    const lastCost = last?.x?.up_billing_usd ?? null;
+  const last        = present[present.length - 1] || null;
+  const lastStorage = bytesToMB(last?.x?.up_storage_bytes ?? null);
+  const avgP99      = n ? present.reduce((a, r) => a + (usToMs(r.x?.cf_cpu_p99_us) || 0), 0) / n : null;
 
-    const avgP99 = present.length ? present.reduce((a,r)=>a + (usToMs(r.x?.cf_cpu_p99_us||0)||0), 0) / present.length : null;
+  $("kpiWrites").textContent    = fmtInt(totalW);
+  $("kpiReads").textContent     = fmtInt(totalR);
+  $("kpiCmds").textContent      = fmtInt(totalC);
 
-    $("kpiWrites").textContent = fmtInt(totalWrites);
-    $("kpiReads").textContent = fmtInt(totalReads);
-    $("kpiCmds").textContent = fmtInt(totalCmds);
-    $("kpiErrors").textContent = fmtInt(totalErrors);
+  $("kpiWritesSub").textContent = n ? `${fmtInt(Math.round(totalW/n))} / dia` : "sem dados";
+  $("kpiReadsSub").textContent  = n ? `${fmtInt(Math.round(totalR/n))} / dia` : "sem dados";
+  $("kpiCmdsSub").textContent   = n ? `${fmtInt(Math.round(totalC/n))} / dia` : "sem dados";
 
-    $("kpiWritesSub").textContent = present.length ? `${fmtInt(totalWrites/present.length)} / dia (média)` : "—";
-    $("kpiReadsSub").textContent  = present.length ? `${fmtInt(totalReads/present.length)} / dia (média)` : "—";
-    $("kpiCmdsSub").textContent   = present.length ? `${fmtInt(totalCmds/present.length)} / dia (média)` : "—";
-    $("kpiErrorsSub").textContent = avgP99===null ? "—" : `CPU P99 médio: ${fmtFloat(avgP99,2)} ms`;
+  // Coverage KPI
+  const coverage = rows.length ? Math.round((n / rows.length) * 100) : 0;
+  $("kpiStatus").textContent    = `${n}/${rows.length}`;
+  $("kpiStatusSub").textContent = `${coverage}% cobertura`;
+  $("kpiStatus").className      = "kpi-value " + (coverage >= 80 ? "ok" : coverage >= 50 ? "warn" : "bad");
+  // Update accent color via CSS var on the card
+  const statusCard = $("kpiStatus").closest(".kpi");
+  statusCard.style.setProperty("--kpi-status-color",
+    coverage >= 80 ? "var(--ok)" : coverage >= 50 ? "var(--warn)" : "var(--bad)");
 
-    $("sumPeriod").textContent = periodLabel;
-    $("sumCoverage").textContent = `${present.length}/${rows.length} dias (${fmtInt((present.length/rows.length)*100)}%)`;
-    $("sumReuse").textContent = totalWrites > 0 ? `${fmtFloat(totalReads/totalWrites,2)}x` : "—";
-    $("sumStorage").textContent = lastStorageMB===null ? "—" : `${fmtFloat(lastStorageMB,2)} MB`;
-    $("sumCost").textContent = lastCost===null ? "—" : fmtMoney(lastCost);
-    $("sumLast").textContent = last?.x?.fetched_at ? new Date(last.x.fetched_at).toLocaleString("pt-BR") : "—";
+  // Period label
+  $("periodLabel").textContent = periodLabel;
 
-    if (!present.length) setBadge("bad","sem dados");
-    else if (totalErrors>0) setBadge("warn","atenção");
-    else setBadge("warn","ok (sem erros)");
+  // Coverage note
+  $("coverageNote").textContent = `${n} de ${rows.length} dias com snapshot (${coverage}%)`;
+
+  // Advanced stats
+  $("advStorage").textContent = lastStorage != null ? `${fmtFloat(lastStorage, 2)} MB` : "—";
+  $("advErrors").textContent  = fmtInt(totalE);
+  $("advCpu").textContent     = avgP99 != null ? `${fmtFloat(avgP99, 2)} ms` : "—";
+
+  // Badge
+  if (!n)           setBadge("bad",  "sem dados");
+  else if (totalE > 0) setBadge("warn", `atenção — ${fmtInt(totalE)} errors`);
+  else              setBadge("ok",   `ok — ${coverage}% cobertura`);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Render: Table
+═══════════════════════════════════════════════════════════════════════════ */
+function renderTable(rows) {
+  const tb = $("tbody");
+  tb.innerHTML = "";
+
+  if (!rows.length) {
+    tb.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted)">Nenhum dado.</td></tr>`;
+    return;
   }
 
-  function drawChart(rows){
-    const c = $("chart");
-    const ctx = c.getContext("2d");
-    const dpr = window.devicePixelRatio || 1;
+  for (const r of rows) {
+    const tr = document.createElement("tr");
 
-    const rect = c.getBoundingClientRect();
-    const cssW = Math.max(Math.floor(rect.width), 200);
-    const cssH = Math.max(Math.floor(rect.height), 80);
-
-    const targetW = Math.floor(cssW * dpr);
-    const targetH = Math.floor(cssH * dpr);
-    if (c.width !== targetW || c.height !== targetH) {
-      c.width = targetW;
-      c.height = targetH;
-    }
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.clearRect(0,0,cssW,cssH);
-
-    const padL = 44, padR = 44, padT = 18, padB = 32;
-    const w = cssW - padL - padR;
-    const h = cssH - padT - padB;
-    if (w <= 10 || h <= 10) return;
-
-    const n = rows.length;
-    if (!n) return;
-
-    // Series (daily deltas)
-    const writes = rows.map(r => Number.isFinite(r.d_writes) ? r.d_writes : null);
-    const reads  = rows.map(r => Number.isFinite(r.d_reads) ? r.d_reads : null);
-    const cmds  = rows.map(r => Number.isFinite(r.d_cmds) ? r.d_cmds : null);
-
-    const maxLeft = Math.max(1,
-      ...writes.filter(v=>v!=null),
-      ...reads.filter(v=>v!=null),
-      ...cmds.filter(v=>v!=null)
-    );
-    const xAt = (i) => padL + (n===1 ? w/2 : (i/(n-1))*w);
-    const yLeft = (v) => padT + (1 - (v/maxLeft))*h;
-
-    // Grid
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(255,255,255,0.08)";
-    ctx.fillStyle = "rgba(255,255,255,0.55)";
-    ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-
-    for (let g=0; g<=4; g++){
-      const y = padT + (g/4)*h;
-      ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+w,y); ctx.stroke();
-
-      const vL = Math.round((1 - g/4)*maxLeft);
-      ctx.fillText(fmtInt(vL), 6, y+4);
+    let statusText  = "—";
+    let statusClass = "";
+    if (!r.present) {
+      statusText  = "Sem snapshot";
+      statusClass = "status-bad";
+    } else if (!isValidSnapshot(r.x)) {
+      statusText  = "Parcial";
+      statusClass = "status-warn";
+    } else if (r.reset) {
+      statusText  = "↩ Reset";
+      statusClass = "status-warn";
+    } else {
+      statusText  = "OK";
+      statusClass = "status-ok";
     }
 
-    // X labels (dia do mês)
-    const idxs = Array.from(new Set([0, Math.floor((n-1)/2), n-1])).filter(i => i>=0 && i<n);
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    for (const i of idxs){
-      const d = rows[i].date?.slice(8) || "";
-      ctx.fillText(d, xAt(i)-4, padT+h+22);
+    const storageMB = bytesToMB(r.x?.up_storage_bytes ?? null);
+    const cpu99ms   = usToMs(r.x?.cf_cpu_p99_us ?? null);
+    const cfErrors  = r.x?.cf_errors ?? null;
+
+    tr.innerHTML = `
+      <td>${r.ymd}</td>
+      <td class="num">${fmtDelta(r.d_writes)}</td>
+      <td class="num">${fmtDelta(r.d_reads)}</td>
+      <td class="num">${fmtDelta(r.d_cmds)}</td>
+      <td class="adv num">${storageMB != null ? fmtFloat(storageMB, 2) : "—"}</td>
+      <td class="adv num">${fmtInt(cfErrors)}</td>
+      <td class="adv num">${cpu99ms != null ? fmtFloat(cpu99ms, 2) : "—"}</td>
+      <td class="${statusClass}">${statusText}</td>
+    `;
+    tb.appendChild(tr);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Render: Chart
+   — Quadratic-spline smoothing (same as original)
+   — Area fill under each line
+   — Tooltip on hover
+   — Last-point labels
+═══════════════════════════════════════════════════════════════════════════ */
+// Chart state — stored for resize and tooltip
+const chartState = { rows: [], pts: [] };
+
+function drawChart(rows) {
+  chartState.rows = rows;
+  chartState.pts  = [];
+
+  const c   = $("chart");
+  const ctx = c.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+
+  const rect = c.getBoundingClientRect();
+  const cssW = Math.max(Math.floor(rect.width),  300);
+  const cssH = Math.max(Math.floor(rect.height),  80);
+
+  if (c.width !== Math.floor(cssW*dpr) || c.height !== Math.floor(cssH*dpr)) {
+    c.width  = Math.floor(cssW * dpr);
+    c.height = Math.floor(cssH * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  const padL = 48, padR = 48, padT = 22, padB = 36;
+  const W = cssW - padL - padR;
+  const H = cssH - padT - padB;
+  if (W <= 10 || H <= 10) return;
+
+  const present = rows.filter(r => r.present && r.x);
+  if (!present.length) {
+    $("chartEmpty").style.display = "";
+    c.style.display = "none";
+    return;
+  }
+  $("chartEmpty").style.display = "none";
+  c.style.display = "block";
+
+  const n = rows.length;
+
+  // Series arrays (null for missing days)
+  const writes = rows.map(r => Number.isFinite(r.d_writes) && r.d_writes >= 0 ? r.d_writes : null);
+  const reads  = rows.map(r => Number.isFinite(r.d_reads)  && r.d_reads  >= 0 ? r.d_reads  : null);
+  const cmds   = rows.map(r => Number.isFinite(r.d_cmds)   && r.d_cmds   >= 0 ? r.d_cmds   : null);
+
+  const allVals = [...writes, ...reads, ...cmds].filter(v => v != null);
+  const maxVal  = Math.max(1, ...allVals);
+  const niceMax = computeNiceMax(maxVal);
+
+  const xAt = (i) => padL + (n === 1 ? W / 2 : (i / (n - 1)) * W);
+  const yAt = (v)  => padT + (1 - (v / niceMax)) * H;
+  const yBot = padT + H;
+
+  // CSS vars resolved at draw time
+  const cs    = getComputedStyle(document.documentElement);
+  const cBlue = "#38bdf8";
+  const cPurp = "#a78bfa";
+  const cYell = "#fbbf24";
+  const cGrid = "rgba(255,255,255,0.06)";
+  const cText = "rgba(200,220,255,0.5)";
+
+  // ── Y grid ──────────────────────────────────────────────────────────
+  ctx.font = "11px ui-monospace, monospace";
+  ctx.textBaseline = "middle";
+
+  for (let g = 0; g <= 4; g++) {
+    const frac = g / 4;
+    const y    = padT + frac * H;
+    const val  = Math.round(niceMax * (1 - frac));
+    ctx.strokeStyle = cGrid;
+    ctx.lineWidth   = 1;
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(padL + W, y); ctx.stroke();
+    ctx.fillStyle = cText;
+    ctx.fillText(fmtAxisVal(val), 6, y);
+  }
+
+  // ── X labels (start / mid / end) ────────────────────────────────────
+  const labelIdxs = n <= 1 ? [0] : [0, Math.floor((n-1)/2), n-1];
+  ctx.fillStyle = cText;
+  ctx.textBaseline = "alphabetic";
+  for (const i of [...new Set(labelIdxs)]) {
+    if (i >= 0 && i < n) {
+      const lbl = rows[i].ymd?.slice(8) || "";
+      const x = xAt(i);
+      ctx.fillText(lbl, x - ctx.measureText(lbl).width / 2, padT + H + 22);
     }
+  }
 
-    function toPoints(series, yFn){
-      const pts=[];
-      for (let i=0;i<n;i++){
-        const v=series[i];
-        if (v==null) continue;
-        pts.push({x:xAt(i), y:yFn(v), v, i});
-      }
-      return pts;
+  // ── Draw a series ────────────────────────────────────────────────────
+  function buildPoints(series) {
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+      const v = series[i];
+      if (v == null) continue;
+      pts.push({ x: xAt(i), y: yAt(v), v, i, row: rows[i] });
     }
+    return pts;
+  }
 
-    function drawSmooth(points, stroke){
-      if (points.length===0) return;
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = stroke;
+  function drawLine(pts, color, dashed=false) {
+    if (!pts.length) return;
 
-      if (points.length===1){
-        ctx.beginPath();
-        ctx.arc(points[0].x, points[0].y, 3, 0, Math.PI*2);
-        ctx.stroke();
-        return;
-      }
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 2;
+    ctx.lineJoin    = "round";
+    ctx.lineCap     = "round";
+    if (dashed) ctx.setLineDash([6, 5]);
+
+    // Area fill
+    if (!dashed) {
+      const grad = ctx.createLinearGradient(0, padT, 0, yBot);
+      grad.addColorStop(0, color.replace(")", ", 0.18)").replace("rgb", "rgba").replace("#", "rgba(").replace(/rgba\(([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2}),/, (m, r, g, b) =>
+        `rgba(${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)},`));
+      // simpler: just use low-alpha version
+      ctx.fillStyle = color + "22"; // hex alpha trick — browsers handle #rrggbbaa
 
       ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      for (let i=1;i<points.length-1;i++){
-        const xc=(points[i].x+points[i+1].x)/2;
-        const yc=(points[i].y+points[i+1].y)/2;
-        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+      ctx.moveTo(pts[0].x, yBot);
+      ctx.lineTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const xc = (pts[i].x + pts[i+1].x) / 2;
+        const yc = (pts[i].y + pts[i+1].y) / 2;
+        ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
       }
-      const last=points[points.length-1];
-      const prev=points[points.length-2];
+      if (pts.length > 1) {
+        const last = pts[pts.length-1], prev = pts[pts.length-2];
+        ctx.quadraticCurveTo(prev.x, prev.y, last.x, last.y);
+      }
+      ctx.lineTo(pts[pts.length-1].x, yBot);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // Spline
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    if (pts.length === 1) {
+      ctx.arc(pts[0].x, pts[0].y, 3, 0, Math.PI*2);
+    } else {
+      for (let i = 1; i < pts.length - 1; i++) {
+        const xc = (pts[i].x + pts[i+1].x) / 2;
+        const yc = (pts[i].y + pts[i+1].y) / 2;
+        ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
+      }
+      const last = pts[pts.length-1], prev = pts[pts.length-2];
       ctx.quadraticCurveTo(prev.x, prev.y, last.x, last.y);
-      ctx.stroke();
-
-      // markers
-      ctx.fillStyle = "rgba(255,255,255,0.85)";
-      for (const p of points){
-        ctx.beginPath(); ctx.arc(p.x,p.y,2.5,0,Math.PI*2); ctx.fill();
-      }
     }
+    ctx.stroke();
+    ctx.restore();
 
-    const ptsW = toPoints(writes, yLeft);
-    const ptsR = toPoints(reads, yLeft);
-    const ptsC = toPoints(cmds, yLeft);
-
-    drawSmooth(ptsW, "rgba(56,189,248,0.95)");  // Writes
-    drawSmooth(ptsR, "rgba(167,139,250,0.95)"); // Reads
-
-    // CPU line (thin)
-    if (ptsC.length){
-      ctx.lineWidth = 1.5;
-      ctx.strokeStyle = "rgba(251,191,36,0.9)";
-      ctx.setLineDash([6,4]);
-      drawSmooth(ptsC, "rgba(251,191,36,0.9)");
-      ctx.setLineDash([]);
-    }
-
-    // Labels for last points
-    function labelLast(points, label, color){
-      if (!points.length) return;
-      const p = points[points.length-1];
-      const txt = `${label}: ${fmtInt(p.v)}`;
-      ctx.fillStyle = color;
-      ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-      const tw = ctx.measureText(txt).width;
-      const x = Math.min(p.x+8, padL+w - tw);
-      const y = Math.max(14, p.y-10);
-      ctx.fillText(txt, x, y);
-    }
-    labelLast(ptsW, "Gerados", "rgba(56,189,248,0.9)");
-    labelLast(ptsR, "Carregados", "rgba(167,139,250,0.9)");
-    if (ptsC.length) labelLast(ptsC, "Comandos", "rgba(251,191,36,0.9)");
-
-    // Legend
-    $("chartLegend").innerHTML = `
-      <span class="lg"><i style="background:rgba(56,189,248,0.95)"></i>CRR5 gerados</span>
-      <span class="lg"><i style="background:rgba(167,139,250,0.95)"></i>CRR5 carregados</span>
-      <span class="lg"><i style="background:rgba(251,191,36,0.9)"></i>Comandos (dia)</span>
-    `;
+    // Dot on last point
+    const tail = pts[pts.length-1];
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.strokeStyle = "var(--surface)";
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(tail.x, tail.y, 4, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
   }
 
+  function labelLast(pts, label, color) {
+    if (!pts.length) return;
+    const p   = pts[pts.length-1];
+    const txt = `${label} ${fmtInt(p.v)}`;
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.font      = "11px ui-monospace, monospace";
+    ctx.textBaseline = "middle";
+    const tw = ctx.measureText(txt).width;
+    const x  = Math.min(p.x + 8, padL + W - tw - 2);
+    const y  = Math.max(padT + 6, Math.min(p.y - 12, padT + H - 6));
+    ctx.fillText(txt, x, y);
+    ctx.restore();
+  }
 
-  async function loadRange(startUTC, endUTC){
-    const basePath = $("basePath").value.replace(/\/+$/,"");
-    const days = [];
-    let cur = new Date(startUTC.getTime());
-    while (cur <= endUTC){
-      days.push(ymdUTC(cur));
-      cur = addDays(cur, 1);
+  const ptsW = buildPoints(writes);
+  const ptsR = buildPoints(reads);
+  const ptsC = buildPoints(cmds);
+
+  drawLine(ptsW, cBlue);
+  drawLine(ptsR, cPurp);
+  if (ptsC.length) drawLine(ptsC, cYell, true);
+
+  labelLast(ptsW, "Writes",    cBlue + "cc");
+  labelLast(ptsR, "Reads",     cPurp + "cc");
+  if (ptsC.length) labelLast(ptsC, "Cmds", cYell + "cc");
+
+  // Store all points for tooltip hit-testing
+  for (const p of ptsW) chartState.pts.push({ ...p, series: "W", color: cBlue });
+  for (const p of ptsR) chartState.pts.push({ ...p, series: "R", color: cPurp });
+  for (const p of ptsC) chartState.pts.push({ ...p, series: "C", color: cYell });
+}
+
+function fmtAxisVal(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1) + "M";
+  if (n >= 1000)    return (n/1000).toFixed(0) + "k";
+  return String(n);
+}
+function computeNiceMax(v) {
+  if (v <= 0) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  const f = v / p;
+  let m;
+  if (f <= 1)       m = 1;
+  else if (f <= 2)  m = 2;
+  else if (f <= 5)  m = 5;
+  else              m = 10;
+  return m * p;
+}
+
+/* ── Tooltip interaction ─────────────────────────────────────────── */
+const ttEl    = $("tooltip");
+const ttDate  = $("ttDate");
+const ttW_el  = $("ttW");
+const ttR_el  = $("ttR");
+const ttC_el  = $("ttC");
+
+$("chart").addEventListener("mousemove", (ev) => {
+  const pts = chartState.pts;
+  if (!pts.length) { ttEl.classList.remove("visible"); return; }
+
+  const rect = $("chart").getBoundingClientRect();
+  const mx = ev.clientX - rect.left;
+  const my = ev.clientY - rect.top;
+
+  // Find nearest X index (column snap)
+  const rows = chartState.rows;
+  const n    = rows.length;
+  if (!n) return;
+
+  // Compute padL/W again (simplified)
+  const cssW = Math.max(rect.width, 300);
+  const padL = 48, padR = 48;
+  const W = cssW - padL - padR;
+  const fracX = Math.max(0, Math.min(1, (mx - padL) / W));
+  const idx = Math.round(fracX * (n - 1));
+  const row = rows[idx];
+  if (!row) { ttEl.classList.remove("visible"); return; }
+
+  const wv = row.d_writes, rv = row.d_reads, cv = row.d_cmds;
+
+  ttDate.textContent  = row.ymd || "—";
+  ttW_el.textContent  = fmtDelta(wv);
+  ttR_el.textContent  = fmtDelta(rv);
+  ttC_el.textContent  = fmtDelta(cv);
+
+  // Clamp tooltip position
+  const TTW = 170, TTH = 110;
+  const x = Math.min(ev.clientX + 14, window.innerWidth  - TTW - 8);
+  const y = Math.min(ev.clientY + 14, window.innerHeight - TTH - 8);
+  ttEl.style.transform = `translate(${x}px, ${y}px)`;
+  ttEl.classList.add("visible");
+});
+$("chart").addEventListener("mouseleave", () => ttEl.classList.remove("visible"));
+
+window.addEventListener("resize", () => {
+  if (chartState.rows.length) drawChart(chartState.rows);
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CSV export
+═══════════════════════════════════════════════════════════════════════════ */
+function buildCSV(rows) {
+  const header = ["date","writes_day","reads_day","commands_day","storage_mb","cf_errors","cpu_p99_ms","snapshot_ok"];
+  const lines  = [header.join(",")];
+  for (const r of rows) {
+    const smb   = bytesToMB(r.x?.up_storage_bytes ?? null);
+    const cpu99 = usToMs(r.x?.cf_cpu_p99_us ?? null);
+    lines.push([
+      r.ymd,
+      r.d_writes ?? "",
+      r.d_reads  ?? "",
+      r.d_cmds   ?? "",
+      smb   != null ? smb.toFixed(4)   : "",
+      r.x?.cf_errors ?? "",
+      cpu99 != null ? cpu99.toFixed(3) : "",
+      r.present ? "1" : "0",
+    ].join(","));
+  }
+  return lines.join("\n");
+}
+function download(filename, content, mime="text/plain") {
+  const blob = new Blob([content], { type: mime });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Main load orchestration
+═══════════════════════════════════════════════════════════════════════════ */
+async function loadRange(startUTC, endUTC) {
+  const base = ($("basePath").value || "./data").replace(/\/+$/, "");
+  const days = [];
+  let cur = new Date(startUTC.getTime());
+  while (cur <= endUTC) { days.push(ymdUTC(cur)); cur = addDays(cur, 1); }
+  if (!days.length) return;
+
+  $("btnLoad").disabled = true;
+  $("btnLoad").textContent = "Carregando…";
+  setBadge("warn", "carregando…");
+
+  const results = await mapLimit(days, 6, async (ymd) => {
+    const url = `${base}/${ymd}.json`;
+    const r   = await fetchJson(url);
+    if (!r.ok) return { ymd, present: false, x: null };
+    return { ymd, present: true, x: extract(r.json) };
+  });
+
+  const rows = results
+    .map(r => ({ ymd: r.ymd, date: parseYMD(r.ymd), present: r.present, x: r.present ? r.x : null, d_reads: null, d_writes: null, d_cmds: null }))
+    .sort((a, b) => a.date - b.date);
+
+  computeDeltas(rows);
+
+  const label = `${rows[0].ymd} → ${rows[rows.length-1].ymd}`;
+  renderKPIs(rows, label);
+  renderTable(rows);
+  drawChart(rows);
+
+  const csv = buildCSV(rows);
+  $("btnCSV").disabled  = false;
+  $("btnPrint").disabled = false;
+  $("btnCSV").onclick   = () => download(`crr5_${rows[0].ymd}_${rows[rows.length-1].ymd}.csv`, csv, "text/csv");
+  $("btnPrint").onclick = () => window.print();
+
+  $("btnLoad").disabled = false;
+  $("btnLoad").textContent = "Carregar";
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UI wiring
+═══════════════════════════════════════════════════════════════════════════ */
+// Mode toggle
+function syncMode() {
+  const m = $("mode").value;
+  $("monthCtrl").style.display = (m === "month") ? "" : "none";
+  $("startCtrl").style.display = (m === "range") ? "" : "none";
+  $("endCtrl").style.display   = (m === "range") ? "" : "none";
+}
+$("mode").addEventListener("change", syncMode);
+syncMode();
+
+// Default: current month
+const now = new Date();
+$("month").value = `${now.getUTCFullYear()}-${pad2(now.getUTCMonth()+1)}`;
+// Default date range: last 14 days
+const rangeEnd   = ymdUTC(now);
+const rangeStart = ymdUTC(addDays(now, -13));
+$("start").value = rangeStart;
+$("end").value   = rangeEnd;
+
+// Load trigger with mutex
+let _loading = false;
+async function triggerLoad() {
+  if (_loading) return;
+  _loading = true;
+  try {
+    const mode = $("mode").value;
+    if (mode === "month") {
+      const val = $("month").value;
+      if (!val) return;
+      const [y,m] = val.split("-").map(Number);
+      const nd    = daysInMonthUTC(y, m);
+      await loadRange(new Date(Date.UTC(y, m-1, 1)), new Date(Date.UTC(y, m-1, nd)));
+    } else {
+      const s = $("start").value, e = $("end").value;
+      if (!s || !e) return;
+      await loadRange(parseYMD(s), parseYMD(e));
     }
-
-    $("btnLoad").disabled = true;
-    $("btnLoad").textContent = "Carregando…";
-    setBadge("warn","carregando…");
-
-    const results = await mapLimit(days, 6, async (ymd) => {
-      const url = `${basePath}/${ymd}.json`;
-      const r = await fetchJson(url);
-      if (!r.ok) return { ymd, present:false, x:null };
-      return { ymd, present:true, x: extract(r.json) };
-    });
-
-    const rows = results.map(r=>({
-      ymd:r.ymd,
-      date: parseYMD(r.ymd),
-      present:r.present,
-      x:r.present ? r.x : null,
-      d_reads:null, d_writes:null, d_cmds:null
-    })).sort((a,b)=>a.date-b.date);
-
-    computeDeltas(rows);
-
-    renderKPIs(rows, `${rows[0].ymd} → ${rows[rows.length-1].ymd}`);
-    renderTable(rows);
-    drawChart(rows);
-
-    const csv = buildCSV(rows);
-    $("btnCSV").disabled = false;
-    $("btnPrint").disabled = false;
-    $("btnCSV").onclick = ()=> download(`relatorio_crr5_${rows[0].ymd}_a_${rows[rows.length-1].ymd}.csv`, csv, "text/csv");
-    $("btnPrint").onclick = ()=> window.print();
-
-    $("btnLoad").disabled = false;
+  } catch(e) {
+    console.error(e);
+    setBadge("bad", "erro ao carregar");
+  } finally {
+    _loading = false;
+    $("btnLoad").disabled    = false;
     $("btnLoad").textContent = "Carregar";
   }
+}
+$("btnLoad").addEventListener("click", triggerLoad);
 
-  let _loading = false;
+// Advanced section toggle
+const advToggle  = $("advToggle");
+const advContent = $("advContent");
+advToggle.addEventListener("click", () => {
+  const open = advContent.classList.toggle("visible");
+  advToggle.classList.toggle("open", open);
+});
 
-  async function triggerLoad(){
-    if (_loading) return;
-    _loading = true;
-    try {
-      const mode = $("mode").value;
-          if (mode==="month"){
-            const val = $("month").value;
-            if (!val) return;
-            const [y,m] = val.split("-").map(Number);
-            const n = daysInMonthUTC(y,m);
-            await loadRange(new Date(Date.UTC(y,m-1,1)), new Date(Date.UTC(y,m-1,n)));
-            return;
-          }
-          if (mode==="week"){
-            const w = $("weekStart").value;
-            if (!w) return;
-            const start = parseYMD(w);
-            await loadRange(start, addDays(start,6));
-            return;
-          }
-          if (mode==="range"){
-            const s = $("start").value, e = $("end").value;
-            if (!s || !e) return;
-            await loadRange(parseYMD(s), parseYMD(e));
-          }
-    } catch (e) {
-      console.error(e);
-      setBadge("bad", "erro ao carregar");
-    } finally {
-      _loading = false;
-      try{ $("btnLoad").disabled = false; $("btnLoad").textContent = "Carregar"; }catch(e){}
-    }
-  }
-
-  $("btnLoad").addEventListener("click", triggerLoad);
-  // UI: advanced columns toggle (safe, optional)
-  const adv = $("toggleAdvanced");
-  if (adv) {
-    const saved = localStorage.getItem("crr5_adv_cols") === "1";
-    adv.checked = saved;
-    document.body.classList.toggle("show-advanced", saved);
-    adv.addEventListener("change", () => {
-      document.body.classList.toggle("show-advanced", adv.checked);
-      localStorage.setItem("crr5_adv_cols", adv.checked ? "1" : "0");
-    });
-  }
+// Advanced columns in table
+const toggleAdvCols = $("toggleAdvCols");
+const saved = localStorage.getItem("crr5_adv_cols") === "1";
+toggleAdvCols.checked = saved;
+document.body.classList.toggle("show-adv", saved);
+toggleAdvCols.addEventListener("change", () => {
+  document.body.classList.toggle("show-adv", toggleAdvCols.checked);
+  localStorage.setItem("crr5_adv_cols", toggleAdvCols.checked ? "1" : "0");
+});
 
 </script>
 </body>
