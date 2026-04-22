@@ -1,0 +1,38 @@
+{
+  "snapshot_date": "2026-04-21",
+  "fetched_at_utc": "2026-04-22T05:33:25.574Z",
+  "tz": "America/Sao_Paulo",
+  "mode": "daily",
+  "source": "https://calculadora-status.pages.dev/metrics?hours=24&ts=1776836004427",
+  "data": {
+    "ok": true,
+    "at": "2026-04-22T05:33:24.826Z",
+    "period": {
+      "mode": "hours",
+      "hours": 24,
+      "month": null,
+      "from": null,
+      "to": null,
+      "status": "success",
+      "scriptName": "crr-api"
+    },
+    "upstash": {
+      "ok": true,
+      "total_monthly_requests": 14016,
+      "monthly_reads": 4412,
+      "monthly_writes": 9604,
+      "daily_net_commands": 6,
+      "current_storage_bytes": 12535823,
+      "monthly_billing_usd": 0
+    },
+    "cloudflare": {
+      "ok": true,
+      "requests": 260,
+      "subrequests": 222,
+      "errors": 0,
+      "cpu_p50_us": 1064,
+      "cpu_p90_us": 1632,
+      "cpu_p99_us": 3797
+    }
+  }
+}
