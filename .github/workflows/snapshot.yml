@@ -2,12 +2,23 @@ name: Snapshot diário CRR5 (D-1) + Fechamento Mensal
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "daily (D-1) ou month-close (só grava se hoje for o último dia do mês)"
+        type: choice
+        options: [daily, month-close]
+        default: daily
   schedule:
-    # Diário: 00:10 BRT (UTC-3) => 03:10 UTC
-    - cron: "10 3 * * *"
-    # Candidato a fechamento mensal: 23:55 BRT => 02:55 UTC
-    # (o script só executa se HOJE for o último dia do mês em BRT)
-    - cron: "55 2 * * *"
+    # Diário (D-1): 06:37 BRT => 09:37 UTC. Minuto fora do pico — o slot 03:10 UTC
+    # chegava a atrasar 5-7h na fila do GitHub.
+    - cron: "37 9 * * *"
+    # Fechamento mensal PRÉ-RESET. Os contadores mensais do Upstash zeram às
+    # 00:00 UTC do dia 1 = 21:00 BRT do último dia. Três candidatos antes disso
+    # (18:40, 19:20 e 20:00 BRT) para sobreviver ao atraso do cron; o script só
+    # executa no último dia do mês e só grava enquanto o acumulado não zerou.
+    - cron: "40 21 * * *"
+    - cron: "20 22 * * *"
+    - cron: "0 23 * * *"
 
 permissions:
   contents: write
@@ -20,6 +31,7 @@ jobs:
       TZ: America/Sao_Paulo
       METRICS_URL: ${{ secrets.METRICS_URL }}
       RUN_CRON: ${{ github.event.schedule }}
+      SNAPSHOT_MODE: ${{ github.event.inputs.mode }}
 
     steps:
       - name: Checkout repo
@@ -49,7 +61,7 @@ jobs:
           if [ -n "$(git status --porcelain)" ]; then
             # sem glob pra não dar pathspec
             git add data month || true
-            git commit -m "chore(snapshot): daily snapshot"
+            git commit -m "chore(snapshot): ${SNAPSHOT_MODE:-scheduled} snapshot"
             git push
           else
             echo "No changes to commit."

@@ -5,6 +5,14 @@ import path from "path";
 const METRICS_URL = process.env.METRICS_URL || "";
 const TZ = process.env.TZ || "America/Sao_Paulo";
 const RUN_CRON = process.env.RUN_CRON || "";
+// Para execução manual (workflow_dispatch): "daily" | "month-close"
+const SNAPSHOT_MODE = process.env.SNAPSHOT_MODE || "";
+
+// Os contadores total_monthly_* do Upstash zeram às 00:00 UTC do dia 1
+// (= 21:00 BRT do último dia do mês). Qualquer captura depois disso perde o
+// último dia inteiro, por isso o fechamento mensal precisa rodar ANTES das 21:00 BRT.
+const DAILY_CRONS = new Set(["37 9 * * *"]);
+const MONTH_CLOSE_CRONS = new Set(["40 21 * * *", "20 22 * * *", "0 23 * * *"]);
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 6000;
@@ -56,6 +64,19 @@ async function writeJsonAtomic(filePath, obj) {
   const tmp = `${filePath}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(obj, null, 2), "utf-8");
   await fs.rename(tmp, filePath);
+}
+
+async function readJsonIfExists(filePath) {
+  try {
+    return JSON.parse(await fs.readFile(filePath, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+
+function monthlyWritesOf(snap) {
+  const v = snap?.data?.upstash?.monthly_writes;
+  return Number.isFinite(v) ? v : null;
 }
 
 async function fetchWithTimeout(url, opts, ms) {
@@ -150,6 +171,19 @@ async function saveFailedSnapshot(label, targetDate, error) {
 
 async function runDaily() {
   const target = yesterdayTZ(); // D-1 em BRT
+  const targetPath = path.join("data", `${target}.json`);
+  const lastDay = isLastDayOfMonth(target);
+
+  if (lastDay) {
+    // O fechamento pré-reset (runMonthCloseCandidate) já gravou o último dia com
+    // os contadores ainda válidos; a captura da manhã do dia 1 só veria zeros.
+    const existing = await readJsonIfExists(targetPath);
+    if (existing?.mode === "month-close") {
+      console.log(`[daily] data/${target}.json já veio do fechamento pré-reset. Skip.`);
+      return;
+    }
+  }
+
   try {
     const { url, data } = await fetchMetrics24h();
     const out = {
@@ -160,7 +194,12 @@ async function runDaily() {
       source: url,
       data,
     };
-    await writeJsonAtomic(path.join("data", `${target}.json`), out);
+    if (lastDay) {
+      out.warning =
+        "Captura após o reset mensal do Upstash (00:00 UTC do dia 1): monthly_* não refletem o último dia. Nenhum fechamento pré-reset foi gravado.";
+      console.warn(`[daily] ${out.warning}`);
+    }
+    await writeJsonAtomic(targetPath, out);
     console.log(`[daily] wrote data/${target}.json`);
   } catch (e) {
     await saveFailedSnapshot("daily", target, e);
@@ -177,19 +216,50 @@ async function runMonthCloseCandidate() {
   }
 
   const monthKey = today.slice(0, 7); // YYYY-MM
+  const monthPath = path.join("month", `${monthKey}.json`);
+  const dayPath = path.join("data", `${today}.json`);
+
   try {
     const { url, data } = await fetchMetrics24h();
+    const writes = monthlyWritesOf({ data });
+
+    // Guarda 1: se o acumulado veio MENOR que o do dia anterior, o Upstash já zerou
+    // (cron atrasou para depois das 21:00 BRT). Gravar agora destruiria o mês inteiro.
+    const prevDay = await readJsonIfExists(path.join("data", `${yesterdayTZ()}.json`));
+    const prevWrites = monthlyWritesOf(prevDay);
+    if (writes !== null && prevWrites !== null && writes < prevWrites) {
+      console.warn(
+        `[month-close] monthly_writes=${writes} < ontem=${prevWrites}: contadores já zeraram. Não grava.`
+      );
+      return;
+    }
+
+    // Guarda 2: há vários horários candidatos no mesmo dia; só substitui a captura
+    // anterior se esta for mais completa (acumulado maior ou igual).
+    const existing = await readJsonIfExists(monthPath);
+    const existingWrites = monthlyWritesOf(existing);
+    if (existing?.month === monthKey && existingWrites !== null && writes !== null && writes < existingWrites) {
+      console.log(`[month-close] captura anterior (${existingWrites}) é mais completa que esta (${writes}). Skip.`);
+      return;
+    }
+
+    const fetched_at_utc = new Date().toISOString();
     const out = {
       month: monthKey,
       snapshot_date: today,
-      fetched_at_utc: new Date().toISOString(),
+      fetched_at_utc,
       tz: TZ,
       mode: "month-close",
       source: url,
       data,
     };
-    await writeJsonAtomic(path.join("month", `${monthKey}.json`), out);
-    console.log(`[month-close] wrote month/${monthKey}.json`);
+    await writeJsonAtomic(monthPath, out);
+    console.log(`[month-close] wrote month/${monthKey}.json (monthly_writes=${writes})`);
+
+    // O mesmo payload vale como snapshot do último dia: é a única captura do dia
+    // feita antes do reset, então o delta "último dia − penúltimo" sai correto.
+    await writeJsonAtomic(dayPath, { ...out, month: undefined });
+    console.log(`[month-close] wrote data/${today}.json (pré-reset)`);
   } catch (e) {
     await saveFailedSnapshot("month-close", today, e);
     throw e;
@@ -197,18 +267,17 @@ async function runMonthCloseCandidate() {
 }
 
 async function main() {
-  // Decide pelo cron que disparou
-  if (RUN_CRON === "10 3 * * *") {
-    await runDaily();
-    return;
-  }
-  if (RUN_CRON === "55 2 * * *") {
+  if (SNAPSHOT_MODE === "month-close" || MONTH_CLOSE_CRONS.has(RUN_CRON)) {
     await runMonthCloseCandidate();
     return;
   }
+  if (SNAPSHOT_MODE === "daily" || DAILY_CRONS.has(RUN_CRON)) {
+    await runDaily();
+    return;
+  }
 
-  // Manual: default daily
-  console.log(`[manual] RUN_CRON="${RUN_CRON}" -> rodando daily`);
+  // Manual sem modo informado: default daily
+  console.log(`[manual] RUN_CRON="${RUN_CRON}" SNAPSHOT_MODE="${SNAPSHOT_MODE}" -> rodando daily`);
   await runDaily();
 }
 
